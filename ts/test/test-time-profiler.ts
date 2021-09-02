@@ -15,10 +15,10 @@
  */
 
 import delay from 'delay';
-import * as sinon from 'sinon';
 import * as time from '../src/time-profiler';
-import * as v8TimeProfiler from '../src/time-profiler-bindings';
-import {timeProfile, v8TimeProfile} from './profiles-for-tests';
+
+import {Profile} from './decode';
+import {verifySample, verifyValueType} from './verifiers';
 
 const assert = require('assert');
 
@@ -28,53 +28,54 @@ const PROFILE_OPTIONS = {
 };
 
 describe('Time Profiler', () => {
-  describe('profile', () => {
-    it('should exclude program and idle time', async () => {
-      const profile = await time.profile(PROFILE_OPTIONS);
-      assert.ok(profile.stringTable);
-      assert.deepEqual(
-        [
-          profile.stringTable!.indexOf('(program)'),
-          profile.stringTable!.indexOf('(idle)'),
-        ],
-        [-1, -1]
-      );
-    });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let timer: any;
+
+  function task() {
+    let sum = 0;
+    for (let i = 0; i < 1e6; i++) {
+      sum += i;
+    }
+    timer = setTimeout(task, 10, sum);
+  }
+
+  beforeEach(() => {
+    timer = setTimeout(task, 1);
   });
 
-  describe('profile (w/ stubs)', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sinonStubs: Array<sinon.SinonStub<any, any>> = [];
-    before(() => {
-      sinonStubs.push(
-        sinon.stub(v8TimeProfiler, 'TimeProfiler').returns({
-          start() {},
-          stop() {
-            return v8TimeProfile;
-          },
-        })
-      );
-      sinonStubs.push(sinon.stub(Date, 'now').returns(0));
-    });
+  afterEach(() => {
+    clearTimeout(timer);
+  });
 
-    after(() => {
-      sinonStubs.forEach(stub => {
-        stub.restore();
-      });
+  it('should profile during duration and finish profiling after duration', async () => {
+    let isProfiling = true;
+    time.profile(PROFILE_OPTIONS).then(() => {
+      isProfiling = false;
     });
+    await delay(2 * PROFILE_OPTIONS.durationMillis);
+    assert.strictEqual(false, isProfiling, 'profiler is still running');
+  });
 
-    it('should profile during duration and finish profiling after duration', async () => {
-      let isProfiling = true;
-      time.profile(PROFILE_OPTIONS).then(() => {
-        isProfiling = false;
-      });
-      await delay(2 * PROFILE_OPTIONS.durationMillis);
-      assert.strictEqual(false, isProfiling, 'profiler is still running');
-    });
+  it('should return a profile equal to the expected profile', async () => {
+    const buffer = await time.profile(PROFILE_OPTIONS);
+    const profile = Profile.decode(buffer);
 
-    it('should return a profile equal to the expected profile', async () => {
-      const profile = await time.profile(PROFILE_OPTIONS);
-      assert.deepEqual(timeProfile, profile);
-    });
+    // Verify nano timestamp is close to JS millis timestamp
+    // This will lose resolution, but there's delays between here and the
+    // capture point anyway, so it should be fine to verify this way.
+    assert.ok(Date.now() - Number(profile.timeNanos! / BigInt(1000000)) < 100);
+    assert.ok(profile.durationNanos! > 0);
+
+    verifyValueType(profile, profile.periodType!, 'wall', 'nanoseconds');
+
+    assert.strictEqual(profile.sampleType!.length, 2);
+    verifyValueType(profile, profile.sampleType![0], 'sample', 'count');
+    verifyValueType(profile, profile.sampleType![1], 'wall', 'nanoseconds');
+
+    // This relies on internal naming from Node.js core. This could break if
+    // the function is renamed or refactored away in Node.js core. The name
+    // is a good fit because there's a high likelihood it will trigger often
+    // in the time-based load loop we're using for test data.
+    verifySample(profile, 'processTimers');
   });
 });

@@ -1,76 +1,36 @@
-# How to become a contributor and submit your own code
+# Contributing to @datadog/pprof
 
-**Table of contents**
+Please reach out before starting work on any major code changes.
+This will ensure we avoid duplicating work, or that your code can't be merged due to a rapidly changing
+base. If you would like support for a module that is not listed, [contact support][1] to share a request.
 
-* [Contributor License Agreements](#contributor-license-agreements)
-* [Contributing a patch](#contributing-a-patch)
-* [Running the tests](#running-the-tests)
-* [Releasing the library](#releasing-the-library)
+[1]: https://docs.datadoghq.com/help
 
-## Contributor License Agreements
+## Local setup
 
-We'd love to accept your sample apps and patches! Before we can take them, we
-have to jump a couple of legal hurdles.
-
-Please fill out either the individual or corporate Contributor License Agreement
-(CLA).
-
-  * If you are an individual writing original source code and you're sure you
-    own the intellectual property, then you'll need to sign an [individual CLA](https://developers.google.com/open-source/cla/individual).
-  * If you work for a company that wants to allow you to contribute your work,
-    then you'll need to sign a [corporate CLA](https://developers.google.com/open-source/cla/corporate).
-
-Follow either of the two links above to access the appropriate CLA and
-instructions for how to sign and return it. Once we receive it, we'll be able to
-accept your pull requests.
-
-## Contributing A Patch
-
-1.  Submit an issue describing your proposed change to the repo in question.
-1.  The repo owner will respond to your issue promptly.
-1.  If your proposed change is accepted, and you haven't already done so, sign a
-    Contributor License Agreement (see details above).
-1.  Fork the desired repo, develop and test your code changes.
-1.  Ensure that your code adheres to the existing style in the code to which
-    you are contributing.
-1.  Ensure that your code has an appropriate set of tests which all pass.
-1.  Submit a pull request.
-
-## Running the tests
-
-1.  [Prepare your environment for Node.js setup][setup].
-
-1.  Install dependencies:
-    ```sh
-    npm install
-    ```
-
-1.  Run the tests:
-    ```sh
-    npm test
-    ```
-
-1.  Lint (and maybe fix) any changes:
-    ```sh
-    npm run fix
-    ```
-
-[setup]: https://cloud.google.com/nodejs/docs/setup
-
-# Running the system test
-The system test starts a simple benchmark, uses this module to collect a time
-and a heap profile, and verifies that the profiles contain functions from 
-within the benchmark. 
-
-To run the system test, [golang](https://golang.org/) must be installed.
-
-The following command can be used to run the system test with all supported
-versions of Node.JS:
-```sh
-sh system-test/system_test.sh
+To set up the project locally, you can install it with:
+```
+$ npm install
 ```
 
-To run the system test with the v8 canary build, use:
-```sh
-RUN_ONLY_V8_CANARY_TEST=true sh system-test/system_test.sh
+### Build
+
+Build TypeScript code with:
+```
+$ npm run compile
+```
+
+Build C++ code with:
+```
+$ npm run rebuild
+```
+
+Test the JavaScript interface with:
+```
+$ npm test
+```
+
+Test the C++ pprof encoder with:
+```
+$ npm run cctest
 ```

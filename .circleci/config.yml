@@ -70,7 +70,7 @@ prebuild-linux-ia32-base: &prebuild-linux-ia32-base
 
 prebuild-darwin-base: &prebuild-darwin-base
   macos:
-    xcode: "10.2.0"
+    xcode: "12.2.0"
   working_directory: ~/dd-pprof
   steps:
     - checkout
@@ -234,26 +234,6 @@ jobs:
       - ARCH=x64
       - NODE_VERSIONS=12 - 13
 
-  # Prebuilds (darwin ia32)
-
-  mac-ia32-16:
-    <<: *prebuild-darwin-base
-    environment:
-      - ARCH=ia32
-      - NODE_VERSIONS=16
-
-  mac-ia32-14:
-    <<: *prebuild-darwin-base
-    environment:
-      - ARCH=ia32
-      - NODE_VERSIONS=14 - 15
-
-  mac-ia32-12:
-    <<: *prebuild-darwin-base
-    environment:
-      - ARCH=ia32
-      - NODE_VERSIONS=12 - 13
-
   # Prebuilds (win32 x64)
 
   win-x64-16:
@@ -351,13 +331,6 @@ workflows:
           <<: *prebuild-job
       - mac-x64-12:
           <<: *prebuild-job
-      # Darwin ia32
-      - mac-ia32-16:
-          <<: *prebuild-job
-      - mac-ia32-14:
-          <<: *prebuild-job
-      - mac-ia32-12:
-          <<: *prebuild-job
       # Windows x64
       - win-x64-16:
           <<: *prebuild-job
@@ -384,9 +357,6 @@ workflows:
             - mac-x64-16
             - mac-x64-14
             - mac-x64-12
-            - mac-ia32-16
-            - mac-ia32-14
-            - mac-ia32-12
             - win-x64-16
             - win-x64-14
             - win-x64-12

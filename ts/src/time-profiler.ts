@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
+import {join} from 'path';
+
 import delay from 'delay';
 
-import {serializeTimeProfile} from './profile-serializer';
-import {SourceMapper} from './sourcemapper/sourcemapper';
-import {TimeProfiler} from './time-profiler-bindings';
+const findBinding = require('node-gyp-build');
+const profiler = findBinding(join(__dirname, '..', '..'));
+
+export const TimeProfiler = profiler.TimeProfiler;
 
 const DEFAULT_INTERVAL_MICROS: Microseconds = 1000;
 
@@ -30,7 +33,6 @@ export interface TimeProfilerOptions {
   durationMillis: Milliseconds;
   /** average time in microseconds between samples */
   intervalMicros?: Microseconds;
-  sourceMapper?: SourceMapper;
   name?: string;
 
   /**
@@ -46,7 +48,6 @@ export async function profile(options: TimeProfilerOptions) {
   const stop = start(
     options.intervalMicros || DEFAULT_INTERVAL_MICROS,
     options.name,
-    options.sourceMapper,
     options.lineNumbers
   );
   await delay(options.durationMillis);
@@ -56,30 +57,13 @@ export async function profile(options: TimeProfilerOptions) {
 export function start(
   intervalMicros: Microseconds = DEFAULT_INTERVAL_MICROS,
   name?: string,
-  sourceMapper?: SourceMapper,
   lineNumbers = true
 ) {
   const runName = name || `pprof-${Date.now()}-${Math.random()}`;
   const profiler = new TimeProfiler(intervalMicros);
   profiler.start(runName, lineNumbers);
-  // Node.js contains an undocumented API for reporting idle status to V8.
-  // This lets the profiler distinguish idle time from time spent in native
-  // code. Ideally this should be default behavior. Until then, use the
-  // undocumented API.
-  // See https://github.com/nodejs/node/issues/19009#issuecomment-403161559.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (typeof (process as any)._startProfilerIdleNotifier === 'function') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (process as any)._startProfilerIdleNotifier();
-  }
-  return function stop() {
-    const result = profiler.stop(runName, lineNumbers);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof (process as any)._stopProfilerIdleNotifier === 'function') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (process as any)._stopProfilerIdleNotifier();
-    }
-    const profile = serializeTimeProfile(result, intervalMicros, sourceMapper);
-    return profile;
+
+  return function stop(): Promise<Buffer> {
+    return profiler.stop(runName, intervalMicros);
   };
 }

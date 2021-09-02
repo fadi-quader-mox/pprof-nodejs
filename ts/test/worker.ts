@@ -1,7 +1,8 @@
 // eslint-disable-next-line node/no-unsupported-features/node-builtins
 import {Worker, isMainThread} from 'worker_threads';
 import {time} from '../src/index';
-import {perftools} from '../../proto/profile';
+
+import {Profile, ValueType} from './decode';
 
 const assert = require('assert');
 
@@ -11,19 +12,13 @@ if (isMainThread) {
   new Worker(__filename);
 }
 
-function valueName(
-  profile: perftools.profiles.IProfile,
-  vt: perftools.profiles.IValueType
-) {
-  const type = getAndVerifyString(profile.stringTable!, vt, 'type');
-  const unit = getAndVerifyString(profile.stringTable!, vt, 'unit');
+function valueName(profile: Profile, value_type: ValueType) {
+  const type = getAndVerifyString(profile.stringTable!, value_type, 'type');
+  const unit = getAndVerifyString(profile.stringTable!, value_type, 'unit');
   return `${type}/${unit}`;
 }
 
-function sampleName(
-  profile: perftools.profiles.IProfile,
-  sampleType: perftools.profiles.IValueType[]
-) {
+function sampleName(profile: Profile, sampleType: Array<ValueType>) {
   return sampleType.map(valueName.bind(null, profile));
 }
 
@@ -43,46 +38,79 @@ function getAndVerifyString(stringTable: string[], source: any, field: string) {
   return str;
 }
 
+let stopped = false;
+
+function load() {
+  let sum = 0;
+  for (let i = 0; i < 1000; i++) {
+    sum += i;
+  }
+  if (!stopped) {
+    setTimeout(load, 10, sum);
+  }
+}
+load();
+
 time
   .profile({
-    durationMillis: 500,
+    durationMillis: 2000,
   })
-  .then(profile => {
-    assert.deepStrictEqual(sampleName(profile, profile.sampleType!), [
-      'sample/count',
-      'wall/nanoseconds',
-    ]);
-    assert.strictEqual(typeof profile.timeNanos, 'number');
-    assert.strictEqual(typeof profile.durationNanos, 'number');
-    assert.strictEqual(typeof profile.period, 'number');
+  .then(buffer => {
+    const profile = Profile.decode(buffer);
+
+    assert.deepStrictEqual(
+      sampleName(profile, profile.sampleType!),
+      ['sample/count', 'wall/nanoseconds'],
+      'sample types are equal'
+    );
+    assert.strictEqual(
+      typeof profile.timeNanos,
+      'bigint',
+      'time nanos is a bigint'
+    );
+    assert.strictEqual(
+      typeof profile.durationNanos,
+      'bigint',
+      'duration nanos is a bigint'
+    );
+    assert.strictEqual(typeof profile.period, 'number', 'period is a number');
     assert.strictEqual(
       valueName(profile, profile.periodType!),
-      'wall/nanoseconds'
+      'wall/nanoseconds',
+      'period type is wall/nanoseconds'
     );
 
+    assert.ok(profile.sample, 'profile has a sample list');
+    assert.ok(profile.sample!.length, 'profile has samples');
     for (const sample of profile.sample!) {
-      assert.deepStrictEqual(sample.label, []);
-
+      assert.ok(sample.value, 'sample has a value list');
+      assert.strictEqual(sample.value!.length, 2, 'sample has two values');
       for (const value of sample.value!) {
-        assert.strictEqual(typeof value, 'number');
+        assert.strictEqual(typeof value, 'bigint', 'sample value is a bigint');
       }
 
+      assert.ok(sample.locationId, 'sample has a location id list');
+      assert.ok(sample.locationId!.length, 'sample has location ids');
       for (const locationId of sample.locationId!) {
         const location = getAndVerifyPresence(
           profile.location!,
           locationId as number
         );
+        assert.ok(location, 'found location by id');
 
-        for (const {functionId, line} of location.line!) {
+        assert.ok(location.line, 'location has a line list');
+        assert.strictEqual(location.line!.length, 1, 'location has one line');
+        for (const {function_id, line} of location.line!) {
           const fn = getAndVerifyPresence(
             profile.function!,
-            functionId as number
+            function_id as number
           );
+          assert.ok(fn, 'found function by id');
 
           getAndVerifyString(profile.stringTable!, fn, 'name');
-          getAndVerifyString(profile.stringTable!, fn, 'systemName');
+          getAndVerifyString(profile.stringTable!, fn, 'system_name');
           getAndVerifyString(profile.stringTable!, fn, 'filename');
-          assert.strictEqual(typeof line, 'number');
+          assert.strictEqual(typeof line, 'number', 'line has line number');
         }
       }
     }
@@ -92,4 +120,7 @@ time
   .catch(err => {
     console.error(err.stack);
     process.exitCode = 1;
+  })
+  .finally(() => {
+    stopped = true;
   });

@@ -1,40 +1,60 @@
 name: ci
+
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    tags:
+      - v*
   pull_request:
+    branches: [ main ]
+
+env:
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
 jobs:
-  test-linux:
-    runs-on: ubuntu-latest
+  test:
     strategy:
       matrix:
-        node: [ 12, 14, 15, 16]
+        node: [ 12, 14, 16 ]
+        os: [ ubuntu-latest, macos-latest, windows-2016 ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
       - run: node --version
-      - run: npm install
+      - run: npm ci --ignore-scripts
       - run: npm test
       - name: coverage
         uses: codecov/codecov-action@v1
         with:
-          name: actions linux ${{ matrix.node }}
-  test-windows:
-    runs-on: windows-latest
+          name: actions ${{ matrix.os }} ${{ matrix.node }}
+
+  cctest:
+    strategy:
+      matrix:
+        node: [ 12, 14, 16 ]
+        os: [ ubuntu-latest, macos-latest, windows-2016 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --ignore-scripts
+      - run: npm run cctest
+
+  license-check:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: 14
-      - run: npm install
-      - run: npm test
-      - name: coverage
-        uses: codecov/codecov-action@v1
-        with:
-          name: actions windows
+      - run: npm ci --ignore-scripts
+      - run: npm run licenses
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -42,5 +62,36 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: 14
-      - run: npm install
+      - run: npm ci --ignore-scripts
+      - run: npm run compile
       - run: npm run lint
+
+  cpp-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v1
+      - run: pip install cpplint
+      - run: cpplint --recursive --filter=-build/include_subdir,-legal/copyright ./bindings
+
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: sudo apt install cppcheck
+      - run: cppcheck \
+          --enable=information,performance,portability,style,warning \
+          --suppress=missingIncludeSystem --suppress=missingInclude \
+          --std=c++14 ./bindings
+
+  all-good:
+    needs:
+      - lint
+      - cpp-lint
+      - cppcheck
+      - license-check
+      - cctest
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '🚀🚀🚀🚀🚀'

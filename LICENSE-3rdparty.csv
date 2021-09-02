@@ -1,0 +1,29 @@
+Component,Origin,License,Copyright
+require,delay,MIT,Copyright Sindre Sorhus
+require,rimraf,ISC,Copyright Isaac Z. Schlueter
+require,split,MIT,Copyright Dominic Tarr
+dev,@types/mocha,MIT,Copyright Kazi Manzur Rashid and others
+dev,@types/node,MIT,Copyright Microsoft TypeScript and others
+dev,@types/pretty-ms,MIT,Copyright BendingBender and others
+dev,@types/request,MIT,Copyright Carlos Ballesteros Velasco and others
+dev,@types/tmp,MIT,Copyright Jared Klopper and others
+dev,axios,MIT,Copyright Matt Zabriskie
+dev,checksum,MIT,Copyright Daniel D. Shaw
+dev,codecov,MIT,Copyright Codecov
+dev,eslint,MIT,Copyright Nicholas C. Zakas
+dev,eslint-config-standard,MIT,Copyright Feross Aboukhadijeh
+dev,eslint-plugin-import,MIT,Copyright Ben Mosher
+dev,eslint-plugin-node,MIT,Copyright Toru Nagashima
+dev,eslint-plugin-promise,ISC,Copyright jden
+dev,eslint-plugin-standard,MIT,Copyright Feross Aboukhadijeh
+dev,glob,ISC,Copyright Isaac Z. Schlueter
+dev,mkdirp,MIT,Copyright unknown authors
+dev,mocha,MIT,Copyright TJ Holowaychuk
+dev,node-addon-api,MIT,Copyright Abhishek Kumar Singh and others
+dev,node-gyp-build,MIT,Copyright Mathias Buus
+dev,nyc,ISC,Copyright Ben Coe
+dev,rimraf,ISC,Copyright Isaac Z. Schlueter
+dev,semver,ISC,Copyright unknown authors
+dev,tar,ISC,Copyright Isaac Z. Schlueter
+dev,tmp,MIT,Copyright KARASZI István
+dev,typescript,Apache-2.0,Copyright Microsoft Corp.

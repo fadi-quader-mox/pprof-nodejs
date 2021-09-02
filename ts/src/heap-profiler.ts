@@ -14,68 +14,24 @@
  * limitations under the License.
  */
 
-import {perftools} from '../../proto/profile';
+import {join} from 'path';
 
-import {
-  getAllocationProfile,
-  startSamplingHeapProfiler,
-  stopSamplingHeapProfiler,
-} from './heap-profiler-bindings';
-import {serializeHeapProfile} from './profile-serializer';
-import {SourceMapper} from './sourcemapper/sourcemapper';
-import {AllocationProfileNode} from './v8-types';
+const findBinding = require('node-gyp-build');
+const profiler = findBinding(join(__dirname, '..', '..'));
 
 let enabled = false;
 let heapIntervalBytes = 0;
 let heapStackDepth = 0;
 
-/*
- * Collects a heap profile when heapProfiler is enabled. Otherwise throws
- * an error.
- *
- * Data is returned in V8 allocation profile format.
- */
-export function v8Profile(): AllocationProfileNode {
-  if (!enabled) {
-    throw new Error('Heap profiler is not enabled.');
-  }
-  return getAllocationProfile();
-}
-
 /**
  * Collects a profile and returns it serialized in pprof format.
  * Throws if heap profiler is not enabled.
- *
- * @param ignoreSamplePath
- * @param sourceMapper
  */
-export function profile(
-  ignoreSamplePath?: string,
-  sourceMapper?: SourceMapper
-): perftools.profiles.IProfile {
-  const startTimeNanos = Date.now() * 1000 * 1000;
-  const result = v8Profile();
-  // Add node for external memory usage.
-  // Current type definitions do not have external.
-  // TODO: remove any once type definition is updated to include external.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const {external}: {external: number} = process.memoryUsage() as any;
-  if (external > 0) {
-    const externalNode: AllocationProfileNode = {
-      name: '(external)',
-      scriptName: '',
-      children: [],
-      allocations: [{sizeBytes: external, count: 1}],
-    };
-    result.children.push(externalNode);
+export function profile(): Promise<Buffer> {
+  if (!enabled) {
+    return Promise.reject(new Error('Heap profiler is not enabled.'));
   }
-  return serializeHeapProfile(
-    result,
-    startTimeNanos,
-    heapIntervalBytes,
-    ignoreSamplePath,
-    sourceMapper
-  );
+  return profiler.heapProfiler.getAllocationProfile(heapIntervalBytes);
 }
 
 /**
@@ -86,22 +42,27 @@ export function profile(
  * @param intervalBytes - average number of bytes between samples.
  * @param stackDepth - maximum stack depth for samples collected.
  */
-export function start(intervalBytes: number, stackDepth: number) {
+export function start(intervalBytes = 1024 * 512, stackDepth = 32) {
   if (enabled) {
     throw new Error(
-      `Heap profiler is already started  with intervalBytes ${heapIntervalBytes} and stackDepth ${stackDepth}`
+      `Heap profiler is already started with intervalBytes ${heapIntervalBytes} and stackDepth ${stackDepth}`
     );
   }
   heapIntervalBytes = intervalBytes;
   heapStackDepth = stackDepth;
-  startSamplingHeapProfiler(heapIntervalBytes, heapStackDepth);
+  profiler.heapProfiler.startSamplingHeapProfiler(
+    heapIntervalBytes,
+    heapStackDepth
+  );
   enabled = true;
 }
 
-// Stops heap profiling. If heap profiling has not been started, does nothing.
+/**
+ * Stops heap profiling. If heap profiling has not been started, does nothing.
+ */
 export function stop() {
   if (enabled) {
     enabled = false;
-    stopSamplingHeapProfiler();
+    profiler.heapProfiler.stopSamplingHeapProfiler();
   }
 }
