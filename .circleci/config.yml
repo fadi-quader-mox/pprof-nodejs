@@ -120,7 +120,7 @@ jobs:
       - *save-npm-cache
       - run:
           name: Lint
-          command: npm run lint
+          command: npm run lint:js
 
   # Core tests
 
