@@ -8,11 +8,8 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
 jobs:
-  test:
+  test-js:
     strategy:
       matrix:
         node: [ 12, 14, 16 ]
@@ -25,13 +22,15 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: node --version
       - run: npm ci --ignore-scripts
-      - run: npm test
+      - run: npm run rebuild
+      - run: npm run build:js
+      - run: npm run test:js
       - name: coverage
         uses: codecov/codecov-action@v1
         with:
           name: actions ${{ matrix.os }} ${{ matrix.node }}
 
-  cctest:
+  test-cpp:
     strategy:
       matrix:
         node: [ 12, 14, 16 ]
@@ -43,9 +42,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm ci --ignore-scripts
-      - run: npm run cctest
+      - run: npm run rebuild
+      - run: npm run test:cpp
 
-  license-check:
+  check-licenses:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -55,7 +55,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run licenses
 
-  lint:
+  lint-js:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -63,35 +63,46 @@ jobs:
         with:
           node-version: 14
       - run: npm ci --ignore-scripts
-      - run: npm run compile
-      - run: npm run lint
+      - run: npm run build:js
+      - run: npm run lint:js
 
-  cpp-lint:
+  lint-cpp:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-python@v1
       - run: pip install cpplint
-      - run: cpplint --recursive --filter=-build/include_subdir,-legal/copyright ./bindings
+      - run: npm run lint:cpp
 
-  cppcheck:
+  check-cpp:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - run: sudo apt install cppcheck
-      - run: cppcheck \
-          --enable=information,performance,portability,style,warning \
-          --suppress=missingIncludeSystem --suppress=missingInclude \
-          --std=c++14 ./bindings
+      - run: npm run check:cpp
+
+  cpp:
+    needs:
+      - lint-cpp
+      - check-cpp
+      - test-cpp
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'cpp success'
+
+  js:
+    needs:
+      - lint-js
+      - test-js
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'cpp success'
 
   all-good:
     needs:
-      - lint
-      - cpp-lint
-      - cppcheck
-      - license-check
-      - cctest
-      - test
+      - js
+      - cpp
+      - check-licenses
     runs-on: ubuntu-latest
     steps:
       - run: echo '🚀🚀🚀🚀🚀'

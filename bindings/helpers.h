@@ -19,10 +19,15 @@
 #include <node.h>
 #include <napi.h>
 
+#include <stdint.h>
+#include <time.h>
+
 #include <string>
 #include <vector>
 
 #include "pprof.h"
+
+uint64_t now();
 
 std::string fallback(const std::string& a, const std::string& b);
 std::string fallback(v8::Local<v8::String> a, const std::string& b);

@@ -18,6 +18,12 @@
 
 #include "helpers.h"
 
+uint64_t now() {
+  struct timespec now;
+  timespec_get(&now, TIME_UTC);
+  return now.tv_sec * 1000000000 + now.tv_nsec;
+}
+
 std::string fallback(const std::string& a, const std::string& b) {
   return a.empty() ? b : a;
 }

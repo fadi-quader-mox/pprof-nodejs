@@ -15,7 +15,7 @@
       ],
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
       "xcode_settings": {
-        "MACOSX_DEPLOYMENT_TARGET": "10.10",
+        "MACOSX_DEPLOYMENT_TARGET": "10.15",
         'CLANG_CXX_LIBRARY': 'libc++',
         "OTHER_CFLAGS": [
           "-std=c++14",

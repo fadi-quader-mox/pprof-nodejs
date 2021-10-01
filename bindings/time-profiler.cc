@@ -25,13 +25,11 @@ TimeProfileEncoder::TimeProfileEncoder(const Napi::Env& env,
                                        v8::CpuProfiler* profiler,
                                        v8::Local<v8::String> name,
                                        int nanos)
-  : PromiseWorker(env), cpuProfiler(profiler), intervalNanos(nanos) {
+  : PromiseWorker(env),
+    cpuProfiler(profiler),
+    intervalNanos(nanos),
+    startTime(now()) {
   cpuProfile = cpuProfiler->StopProfiling(name);
-
-  // Time nanos
-  auto now = std::chrono::system_clock::now().time_since_epoch();
-  auto nowNs = std::chrono::duration_cast<std::chrono::nanoseconds>(now);
-  startTime = nowNs.count();
 }
 
 TimeProfileEncoder::~TimeProfileEncoder() {

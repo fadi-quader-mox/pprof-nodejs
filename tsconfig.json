@@ -6,8 +6,8 @@
     "strict": true,
     "rootDir": "ts",
     "outDir": "out",
-    "lib": [ "es2015" ],
-    "target": "es2015",
+    "lib": [ "ES2018" ],
+    "target": "ES2018",
     "moduleResolution": "node"
   },
   "include": [

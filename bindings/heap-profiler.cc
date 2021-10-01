@@ -38,11 +38,10 @@ AllocationNode::AllocationNode(v8::Isolate* isolate,
 
 HeapProfileEncoder::HeapProfileEncoder(const Napi::Env& env,
   std::unique_ptr<AllocationNode> node, uint32_t interval)
-  : PromiseWorker(env), root(std::move(node)), intervalBytes(interval) {
-  auto now = std::chrono::system_clock::now().time_since_epoch();
-  auto nowNs = std::chrono::duration_cast<std::chrono::nanoseconds>(now);
-  startTime = nowNs.count();
-
+  : PromiseWorker(env),
+    root(std::move(node)),
+    intervalBytes(interval),
+    startTime(now()) {
   v8::HeapStatistics v8_heap_stats;
   v8::Isolate::GetCurrent()->GetHeapStatistics(&v8_heap_stats);
   externalMemory = v8_heap_stats.external_memory();
