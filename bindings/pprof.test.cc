@@ -621,74 +621,74 @@ Mapping* get_mapping(Profile* profile, int64_t id) {
 }
 
 template<typename E, typename R>
-void compare(Tap& t, Profile* profile, E expected, R received,
+void compare(Tap* t, Profile* profile, E expected, R received,
   const std::string& name);
 
 template<typename E, typename R,
   std::enable_if_t<!std::is_arithmetic<E>::value, bool> = true>
-void compare(Tap& t, Profile* profile, std::vector<E> expected,
+void compare(Tap* t, Profile* profile, std::vector<E> expected,
   std::vector<R> received);
 
-void compare(Tap& t, Profile* profile, std::vector<int64_t> expected,
+void compare(Tap* t, Profile* profile, std::vector<int64_t> expected,
   std::vector<int64_t> received) {
-  t.plan(2);
-  t.equal(expected.size(), received.size(), "count");
-  t.equal(expected, received, "is equal");
+  t->plan(2);
+  t->equal(expected.size(), received.size(), "count");
+  t->equal(expected, received, "is equal");
 }
 
-void compare(Tap& t, Profile* profile, const pprof::ValueType& expected,
+void compare(Tap* t, Profile* profile, const pprof::ValueType& expected,
   ValueType* received) {
-  t.plan(3);
-  t.ok(received != nullptr, "parsed value_type is non-null");
-  t.equal(lookup(profile, received->type), expected.type, "type");
-  t.equal(lookup(profile, received->unit), expected.unit, "unit");
+  t->plan(3);
+  t->ok(received != nullptr, "parsed value_type is non-null");
+  t->equal(lookup(profile, received->type), expected.type, "type");
+  t->equal(lookup(profile, received->unit), expected.unit, "unit");
 }
 
-void compare(Tap& t, Profile* profile, const pprof::Function& expected,
+void compare(Tap* t, Profile* profile, const pprof::Function& expected,
   Function* received) {
-  t.plan(4);
-  t.equal(lookup(profile, received->name), expected.name, "name");
-  t.equal(lookup(profile, received->system_name), expected.system_name,
+  t->plan(4);
+  t->equal(lookup(profile, received->name), expected.name, "name");
+  t->equal(lookup(profile, received->system_name), expected.system_name,
     "system_name");
-  t.equal(lookup(profile, received->filename), expected.filename, "filename");
-  t.equal(received->start_line, expected.start_line, "start_line");
+  t->equal(lookup(profile, received->filename), expected.filename, "filename");
+  t->equal(received->start_line, expected.start_line, "start_line");
 }
 
-void compare(Tap& t, Profile* profile, const pprof::Line& expected,
+void compare(Tap* t, Profile* profile, const pprof::Line& expected,
   Line* received) {
-  t.plan(3);
-  t.equal(received->line_number, expected.line, "line_number");
+  t->plan(3);
+  t->equal(received->line_number, expected.line, "line_number");
 
   auto function = get_function(profile, received->function_id);
-  t.equal(function->id, received->function_id, "function_id");
+  t->equal(function->id, received->function_id, "function_id");
   compare(t, profile, expected.function, function, "function");
 }
 
-void compare(Tap& t, Profile* profile, const pprof::Mapping& expected,
+void compare(Tap* t, Profile* profile, const pprof::Mapping& expected,
   int64_t received) {
-  t.plan(10);
+  t->plan(10);
   auto mapping = get_mapping(profile, received);
-  t.equal(mapping->id, received, "mapping_id");
-  t.equal(mapping->memory_start, expected.memory_start, "memory_start");
-  t.equal(mapping->memory_limit, expected.memory_limit, "memory_limit");
-  t.equal(mapping->file_offset, expected.file_offset, "file_offset");
-  t.equal(mapping->filename, expected.filename, "filename");
-  t.equal(mapping->build_id, expected.build_id, "build_id");
-  t.equal(mapping->has_functions, expected.has_functions, "has_functions");
-  t.equal(mapping->has_filenames, expected.has_filenames, "has_filenames");
-  t.equal(mapping->has_line_numbers, expected.has_line_numbers,
+  t->equal(mapping->id, received, "mapping_id");
+  t->equal(mapping->memory_start, expected.memory_start, "memory_start");
+  t->equal(mapping->memory_limit, expected.memory_limit, "memory_limit");
+  t->equal(mapping->file_offset, expected.file_offset, "file_offset");
+  t->equal(mapping->filename, expected.filename, "filename");
+  t->equal(mapping->build_id, expected.build_id, "build_id");
+  t->equal(mapping->has_functions, expected.has_functions, "has_functions");
+  t->equal(mapping->has_filenames, expected.has_filenames, "has_filenames");
+  t->equal(mapping->has_line_numbers, expected.has_line_numbers,
     "has_line_numbers");
-  t.equal(mapping->has_inline_frames, expected.has_inline_frames,
+  t->equal(mapping->has_inline_frames, expected.has_inline_frames,
     "has_inline_frames");
 }
 
-void compare(Tap& t, Profile* profile, const pprof::Location& expected,
+void compare(Tap* t, Profile* profile, const pprof::Location& expected,
   int64_t received) {
   auto location = get_location(profile, received);
-  t.plan(4 + (location->mapping_id ? 1 : 0));
-  t.equal(received, location->id, "id");
-  t.equal(expected.address, location->address, "address");
-  t.equal(expected.is_folded, location->is_folded, "is_folded");
+  t->plan(4 + (location->mapping_id ? 1 : 0));
+  t->equal(received, location->id, "id");
+  t->equal(expected.address, location->address, "address");
+  t->equal(expected.is_folded, location->is_folded, "is_folded");
   if (location->mapping_id) {
     compare(t, profile, expected.mapping, location->mapping_id, "mapping");
   }
@@ -696,19 +696,19 @@ void compare(Tap& t, Profile* profile, const pprof::Location& expected,
   compare(t, profile, expected.lines, location->lines, "line");
 }
 
-void compare(Tap& t, Profile* profile, const pprof::Label& expected,
+void compare(Tap* t, Profile* profile, const pprof::Label& expected,
   Label* received) {
-  t.plan(4);
-  t.equal(lookup(profile, received->key), expected.key, "key");
-  t.equal(lookup(profile, received->str), expected.str, "str");
-  t.equal(received->num, expected.num, "num");
-  t.equal(lookup(profile, received->num_unit), expected.num_unit, "num_unit");
+  t->plan(4);
+  t->equal(lookup(profile, received->key), expected.key, "key");
+  t->equal(lookup(profile, received->str), expected.str, "str");
+  t->equal(received->num, expected.num, "num");
+  t->equal(lookup(profile, received->num_unit), expected.num_unit, "num_unit");
 }
 
-void compare(Tap& t, Profile* profile, const pprof::Sample& expected,
+void compare(Tap* t, Profile* profile, const pprof::Sample& expected,
   Sample* received) {
-  t.plan(4);
-  t.ok(received != nullptr, "parsed value_type is non-null");
+  t->plan(4);
+  t->ok(received != nullptr, "parsed value_type is non-null");
   compare(t, profile, expected.values, received->values, "values");
   compare(t, profile, expected.locations, received->location_ids, "location");
   compare(t, profile, expected.labels, received->labels, "label");
@@ -716,10 +716,10 @@ void compare(Tap& t, Profile* profile, const pprof::Sample& expected,
 
 template<typename E, typename R,
   std::enable_if_t<!std::is_arithmetic<E>::value, bool>>
-void compare(Tap& t, Profile* profile, std::vector<E> expected,
+void compare(Tap* t, Profile* profile, std::vector<E> expected,
   std::vector<R> received) {
-  t.plan(expected.size() + 1);
-  t.equal(expected.size(), received.size(), "count");
+  t->plan(expected.size() + 1);
+  t->equal(expected.size(), received.size(), "count");
   for (size_t i = 0; i < expected.size(); i++) {
     auto est = expected.at(i);
     auto rst = received.at(i);
@@ -728,20 +728,20 @@ void compare(Tap& t, Profile* profile, std::vector<E> expected,
 }
 
 template<typename E, typename R>
-void compare(Tap& t, Profile* profile, E expected, R received,
+void compare(Tap* t, Profile* profile, E expected, R received,
   const std::string& name) {
-  t.test(name, [=](Tap& t) { compare(t, profile, expected, received); });
+  t->test(name, [=](Tap* t) { compare(t, profile, expected, received); });
 }
 
-void compare(Tap& t, const pprof::Profile& expected, Profile* received) {
-  t.plan(9);
-  t.equal(received->drop_frames, expected.drop_frames, "drop_frames");
-  t.equal(received->keep_frames, expected.keep_frames, "keep_frames");
-  t.equal(received->time_nanos, expected.time_nanos, "time_nanos");
-  t.equal(received->duration_nanos, expected.duration_nanos,
+void compare(Tap* t, const pprof::Profile& expected, Profile* received) {
+  t->plan(9);
+  t->equal(received->drop_frames, expected.drop_frames, "drop_frames");
+  t->equal(received->keep_frames, expected.keep_frames, "keep_frames");
+  t->equal(received->time_nanos, expected.time_nanos, "time_nanos");
+  t->equal(received->duration_nanos, expected.duration_nanos,
     "duration_nanos");
-  t.equal(received->period, expected.period, "period");
-  t.equal(received->default_sample_type, expected.default_sample_type,
+  t->equal(received->period, expected.period, "period");
+  t->equal(received->default_sample_type, expected.default_sample_type,
     "default_sample_type");
   compare(t, received, expected.period_type, received->period_type,
     "period_type");
@@ -754,8 +754,8 @@ int main() {
   Tap t;
   t.plan(2);
 
-  t.test("basic structure", [](Tap& t) {
-    t.plan(2);
+  t.test("basic structure", [](Tap* t) {
+    t->plan(2);
     pprof::Profile profile({"object", "count"}, {"heap", "bytes"});
     profile.period = 90;
     profile.time_nanos = 1234;
@@ -775,17 +775,17 @@ int main() {
     std::string encoded = encoder.encode(profile);
 
     Result<Profile, Error> result_profile = Profile::decode(slice(encoded));
-    t.ok(result_profile.is_ok, "parsed");
+    t->ok(result_profile.is_ok, "parsed");
     if (!result_profile.is_ok) return;
 
     auto parsed = result_profile.value;
-    t.test("profile", [=](Tap& t) {
+    t->test("profile", [=](Tap* t) {
       compare(t, profile, parsed);
     });
   });
 
-  t.test("deduplication", [](Tap& t) {
-    t.plan(5);
+  t.test("deduplication", [](Tap* t) {
+    t->plan(5);
     pprof::Profile profile({"object", "count"}, {"heap", "bytes"});
     {
       pprof::Line line({"name", "systemName", "scriptName"}, 123);
@@ -804,14 +804,14 @@ int main() {
     std::string encoded = encoder.encode(profile);
 
     Result<Profile, Error> result_profile = Profile::decode(slice(encoded));
-    t.ok(result_profile.is_ok, "parsed");
+    t->ok(result_profile.is_ok, "parsed");
     if (!result_profile.is_ok) return;
 
     auto parsed = result_profile.value;
-    t.equal(static_cast<int>(parsed->samples.size()), 2, "has two samples");
-    t.equal(static_cast<int>(parsed->locations.size()), 1, "has one location");
-    t.equal(static_cast<int>(parsed->functions.size()), 1, "has one function");
-    t.equal(static_cast<int>(parsed->mappings.size()), 1, "has one mapping");
+    t->equal(static_cast<int>(parsed->samples.size()), 2, "has two samples");
+    t->equal(static_cast<int>(parsed->locations.size()), 1, "has one location");
+    t->equal(static_cast<int>(parsed->functions.size()), 1, "has one function");
+    t->equal(static_cast<int>(parsed->mappings.size()), 1, "has one mapping");
   });
 
   return t.end();

@@ -15,8 +15,8 @@
  */
 
 #include <algorithm>
+#include <utility>
 #include <sstream>
-#include <memory>
 #include <map>
 
 #include "heap-profiler.h"
@@ -56,7 +56,8 @@ void HeapProfileEncoder::Execute() {
   profile.period = intervalBytes;
 
   // Add root children to queue with empty stacks
-  std::map<std::shared_ptr<AllocationNode>, std::vector<pprof::Location>> nodeStacks;
+  std::map<std::shared_ptr<AllocationNode>,
+           std::vector<pprof::Location>> nodeStacks;
   std::vector<std::shared_ptr<AllocationNode>> children;
   for (auto child : root->children) {
     nodeStacks[child] = {};

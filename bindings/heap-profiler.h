@@ -20,6 +20,7 @@
 #include <node.h>
 #include <napi.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 

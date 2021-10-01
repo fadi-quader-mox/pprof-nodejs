@@ -122,10 +122,10 @@ class Tap {
     return 0;
   }
 
-  void test(const std::string& message, std::function<void(Tap&)> fn) {
+  void test(const std::string& message, std::function<void(Tap*)> fn) {
     std::cout << indent << "# Subtest: " << message << std::endl;
     Tap t(indent + "    ");
-    fn(t);
+    fn(&t);
     line(t.end() == 0, message);
   }
 };
