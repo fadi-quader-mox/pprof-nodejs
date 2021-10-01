@@ -53,7 +53,8 @@ load();
 
 time
   .profile({
-    durationMillis: 2000,
+    durationMillis: 2500,
+    intervalMicros: 100
   })
   .then(buffer => {
     const profile = Profile.decode(buffer);
