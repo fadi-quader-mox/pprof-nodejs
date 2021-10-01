@@ -20,7 +20,11 @@
 
 uint64_t now() {
   struct timespec now;
+#ifdef TIME_UTC
   timespec_get(&now, TIME_UTC);
+#else
+  clock_gettime(CLOCK_REALTIME, &now);
+#endif
   return now.tv_sec * 1000000000 + now.tv_nsec;
 }
 
