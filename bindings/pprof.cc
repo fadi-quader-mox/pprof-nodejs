@@ -203,7 +203,6 @@ std::string Encoder::encode(uint8_t id, const Function& function) {
   return bytes.str();
 }
 std::string Encoder::encode(const Profile& profile) {
-  std::cout << "called encode" << std::endl;
   std::ostringstream bytes;
   for (auto sample_type : profile.sample_type) {
     bytes << encode_length_delimited(1, sample_type);
