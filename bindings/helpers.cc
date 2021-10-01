@@ -19,13 +19,9 @@
 #include "helpers.h"
 
 uint64_t now() {
-  struct timespec now;
-#ifdef TIME_UTC
-  timespec_get(&now, TIME_UTC);
-#else
-  clock_gettime(CLOCK_REALTIME, &now);
-#endif
-  return now.tv_sec * 1000000000 + now.tv_nsec;
+  uv_timeval64_t tv;
+  uv_gettimeofday(&tv);
+  return (tv.tv_sec * 1000000000) + (tv.tv_usec * 1000);
 }
 
 std::string fallback(const std::string& a, const std::string& b) {

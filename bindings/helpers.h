@@ -16,11 +16,9 @@
 
 #pragma once
 
+#include <uv.h>
 #include <node.h>
 #include <napi.h>
-
-#include <stdint.h>
-#include <time.h>
 
 #include <string>
 #include <vector>
