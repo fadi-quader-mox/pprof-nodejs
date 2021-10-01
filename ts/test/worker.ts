@@ -42,19 +42,22 @@ let stopped = false;
 
 function load() {
   let sum = 0;
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < 100; i++) {
     sum += i;
   }
   if (!stopped) {
-    setTimeout(load, 10, sum);
+    setImmediate(load, sum);
   }
 }
 load();
 
 time
   .profile({
-    durationMillis: 2500,
+    durationMillis: 2000,
     intervalMicros: 100
+  })
+  .finally(() => {
+    stopped = true;
   })
   .then(buffer => {
     const profile = Profile.decode(buffer);
@@ -121,7 +124,4 @@ time
   .catch(err => {
     console.error(err.stack);
     process.exitCode = 1;
-  })
-  .finally(() => {
-    stopped = true;
   });
