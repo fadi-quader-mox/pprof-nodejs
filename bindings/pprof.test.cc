@@ -118,12 +118,12 @@ struct ValueType {
 
   ValueType() = default;
 
-  inline bool operator==(const ValueType& rhs) {
+  inline bool operator==(const ValueType& rhs) const {
     return type == rhs.type && unit == rhs.unit;
   }
 
   static Result<ValueType, Error> decode(const std::vector<char>& bytes) {
-    ValueType* value_type = new ValueType();
+    ValueType value_type;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -135,11 +135,11 @@ struct ValueType {
 
       switch (flag.field) {
         case 1: {  // type
-          value_type->type = get_number(value);
+          value_type.type = get_number(value);
           break;
         }
         case 2: {  // unit
-          value_type->unit = get_number(value);
+          value_type.unit = get_number(value);
           break;
         }
       }
@@ -157,7 +157,7 @@ struct Label {
 
   Label() = default;
 
-  inline bool operator==(const Label& rhs) {
+  inline bool operator==(const Label& rhs) const {
     return key == rhs.key &&
       str == rhs.str &&
       num == rhs.num &&
@@ -165,7 +165,7 @@ struct Label {
   }
 
   static Result<Label, Error> decode(const std::vector<char>& bytes) {
-    Label* label = new Label();
+    Label label;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -177,19 +177,19 @@ struct Label {
 
       switch (flag.field) {
         case 1: {  // key
-          label->key = get_number(value);
+          label.key = get_number(value);
           break;
         }
         case 2: {  // str
-          label->str = get_number(value);
+          label.str = get_number(value);
           break;
         }
         case 3: {  // num
-          label->num = get_number(value);
+          label.num = get_number(value);
           break;
         }
         case 4: {  // num_unit
-          label->num_unit = get_number(value);
+          label.num_unit = get_number(value);
           break;
         }
       }
@@ -202,18 +202,18 @@ struct Label {
 struct Sample {
   std::vector<int64_t> location_ids;
   std::vector<int64_t> values;
-  std::vector<Label*> labels;
+  std::vector<Label> labels;
 
   Sample() = default;
 
-  inline bool operator==(const Sample& rhs) {
+  inline bool operator==(const Sample& rhs) const {
     return location_ids == rhs.location_ids &&
       values == rhs.values &&
       labels == rhs.labels;
   }
 
   static Result<Sample, Error> decode(const std::vector<char>& bytes) {
-    Sample* sample = new Sample();
+    Sample sample;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -225,17 +225,17 @@ struct Sample {
 
       switch (flag.field) {
         case 1: {  // location_ids
-          sample->location_ids = get_numbers(value);
+          sample.location_ids = get_numbers(value);
           break;
         }
         case 2: {  // values
-          sample->values = get_numbers(value);
+          sample.values = get_numbers(value);
           break;
         }
         case 3: {  // labels
           auto result = Label::decode(value);
           if (!result.is_ok) return Err<Sample, Error>(result.error);
-          sample->labels.push_back(result.value);
+          sample.labels.push_back(result.value);
           break;
         }
       }
@@ -259,7 +259,7 @@ struct Mapping {
 
   Mapping() = default;
 
-  inline bool operator==(const Mapping& rhs) {
+  inline bool operator==(const Mapping& rhs) const {
     return id == rhs.id &&
       memory_start == rhs.memory_start &&
       memory_limit == rhs.memory_limit &&
@@ -273,7 +273,7 @@ struct Mapping {
   }
 
   static Result<Mapping, Error> decode(const std::vector<char>& bytes) {
-    Mapping* mapping = new Mapping();
+    Mapping mapping;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -285,43 +285,43 @@ struct Mapping {
 
       switch (flag.field) {
         case 1: {  // id
-          mapping->id = get_number(value);
+          mapping.id = get_number(value);
           break;
         }
         case 2: {  // memory_start
-          mapping->memory_start = get_number(value);
+          mapping.memory_start = get_number(value);
           break;
         }
         case 3: {  // memory_limit
-          mapping->memory_limit = get_number(value);
+          mapping.memory_limit = get_number(value);
           break;
         }
         case 4: {  // file_offset
-          mapping->file_offset = get_number(value);
+          mapping.file_offset = get_number(value);
           break;
         }
         case 5: {  // filename
-          mapping->filename = get_number(value);
+          mapping.filename = get_number(value);
           break;
         }
         case 6: {  // build_id
-          mapping->build_id = get_number(value);
+          mapping.build_id = get_number(value);
           break;
         }
         case 7: {  // has_functions
-          mapping->has_functions = get_number(value);
+          mapping.has_functions = get_number(value);
           break;
         }
         case 8: {  // has_filenames
-          mapping->has_filenames = get_number(value);
+          mapping.has_filenames = get_number(value);
           break;
         }
         case 9: {  // has_line_numbers
-          mapping->has_line_numbers = get_number(value);
+          mapping.has_line_numbers = get_number(value);
           break;
         }
         case 10: {  // has_inline_frames
-          mapping->has_inline_frames = get_number(value);
+          mapping.has_inline_frames = get_number(value);
           break;
         }
       }
@@ -340,7 +340,7 @@ struct Function {
 
   Function() = default;
 
-  inline bool operator==(const Function& rhs) {
+  inline bool operator==(const Function& rhs) const {
     return id == rhs.id &&
       name == rhs.name &&
       system_name == rhs.system_name &&
@@ -349,7 +349,7 @@ struct Function {
   }
 
   static Result<Function, Error> decode(const std::vector<char>& bytes) {
-    Function* function = new Function();
+    Function function;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -361,23 +361,23 @@ struct Function {
 
       switch (flag.field) {
         case 1: {  // id
-          function->id = get_number(value);
+          function.id = get_number(value);
           break;
         }
         case 2: {  // name
-          function->name = get_number(value);
+          function.name = get_number(value);
           break;
         }
         case 3: {  // system_name
-          function->system_name = get_number(value);
+          function.system_name = get_number(value);
           break;
         }
         case 4: {  // filename
-          function->filename = get_number(value);
+          function.filename = get_number(value);
           break;
         }
         case 5: {  // start_line
-          function->start_line = get_number(value);
+          function.start_line = get_number(value);
           break;
         }
       }
@@ -393,13 +393,13 @@ struct Line {
 
   Line() = default;
 
-  inline bool operator==(const Line& rhs) {
+  inline bool operator==(const Line& rhs) const {
     return function_id == rhs.function_id &&
       line_number == rhs.line_number;
   }
 
   static Result<Line, Error> decode(const std::vector<char>& bytes) {
-    Line* line = new Line();
+    Line line;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -411,11 +411,11 @@ struct Line {
 
       switch (flag.field) {
         case 1: {  // function_id
-          line->function_id = get_number(value);
+          line.function_id = get_number(value);
           break;
         }
         case 2: {  // line_number
-          line->line_number = get_number(value);
+          line.line_number = get_number(value);
           break;
         }
       }
@@ -429,12 +429,12 @@ struct Location {
   int64_t id;
   int64_t mapping_id;
   uint64_t address = 0;
-  std::vector<Line*> lines;
+  std::vector<Line> lines;
   bool is_folded = false;
 
   Location() = default;
 
-  inline bool operator==(const Location& rhs) {
+  inline bool operator==(const Location& rhs) const {
     return id == rhs.id &&
       mapping_id == rhs.mapping_id &&
       address == rhs.address &&
@@ -443,7 +443,7 @@ struct Location {
   }
 
   static Result<Location, Error> decode(const std::vector<char>& bytes) {
-    Location* location = new Location();
+    Location location;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -455,25 +455,25 @@ struct Location {
 
       switch (flag.field) {
         case 1: {  // id
-          location->id = get_number(value);
+          location.id = get_number(value);
           break;
         }
         case 2: {  // mapping_id
-          location->mapping_id = get_number(value);
+          location.mapping_id = get_number(value);
           break;
         }
         case 3: {  // address
-          location->address = get_number(value);
+          location.address = get_number(value);
           break;
         }
         case 4: {  // lines
           auto result = Line::decode(value);
           if (!result.is_ok) return Err<Location, Error>(result.error);
-          location->lines.push_back(result.value);
+          location.lines.push_back(result.value);
           break;
         }
         case 5: {  // is_folded
-          location->is_folded = get_number(value);
+          location.is_folded = get_number(value);
           break;
         }
       }
@@ -484,24 +484,24 @@ struct Location {
 };
 
 struct Profile {
-  std::vector<ValueType*> sample_types;
-  std::vector<Sample*> samples;
-  std::vector<Mapping*> mappings;
-  std::vector<Location*> locations;
-  std::vector<Function*> functions;
+  std::vector<ValueType> sample_types;
+  std::vector<Sample> samples;
+  std::vector<Mapping> mappings;
+  std::vector<Location> locations;
+  std::vector<Function> functions;
   std::vector<std::string> string_table;
   int64_t drop_frames = 0;
   int64_t keep_frames = 0;
   int64_t time_nanos = 0;
   int64_t duration_nanos = 0;
-  ValueType* period_type;
+  ValueType period_type;
   int64_t period = 0;
   std::vector<int64_t> comment;
   int64_t default_sample_type = 0;
 
   Profile() = default;
 
-  inline bool operator==(const Profile& rhs) {
+  inline bool operator==(const Profile& rhs) const {
     return sample_types == rhs.sample_types &&
       samples == rhs.samples &&
       mappings == rhs.mappings &&
@@ -519,7 +519,7 @@ struct Profile {
   }
 
   static Result<Profile, Error> decode(const std::vector<char>& bytes) {
-    Profile* profile = new Profile();
+    Profile profile;
 
     size_t index = 0;
     while (index < bytes.size()) {
@@ -533,69 +533,69 @@ struct Profile {
         case 1: {  // sample_types
           auto result = ValueType::decode(value);
           if (!result.is_ok) return Err<Profile, Error>(result.error);
-          profile->sample_types.push_back(result.value);
+          profile.sample_types.push_back(result.value);
           break;
         }
         case 2: {  // samples
           auto result = Sample::decode(value);
           if (!result.is_ok) return Err<Profile, Error>(result.error);
-          profile->samples.push_back(result.value);
+          profile.samples.push_back(result.value);
           break;
         }
         case 3: {  // mappings
           auto result = Mapping::decode(value);
           if (!result.is_ok) return Err<Profile, Error>(result.error);
-          profile->mappings.push_back(result.value);
+          profile.mappings.push_back(result.value);
           break;
         }
         case 4: {  // locations
           auto result = Location::decode(value);
           if (!result.is_ok) return Err<Profile, Error>(result.error);
-          profile->locations.push_back(result.value);
+          profile.locations.push_back(result.value);
           break;
         }
         case 5: {  // functions
           auto result = Function::decode(value);
           if (!result.is_ok) return Err<Profile, Error>(result.error);
-          profile->functions.push_back(result.value);
+          profile.functions.push_back(result.value);
           break;
         }
         case 6: {  // string_table
-          profile->string_table.push_back(get_string(value));
+          profile.string_table.push_back(get_string(value));
           break;
         }
         case 7: {  // drop_frames
-          profile->drop_frames = get_number(value);
+          profile.drop_frames = get_number(value);
           break;
         }
         case 8: {  // keep_frames
-          profile->keep_frames = get_number(value);
+          profile.keep_frames = get_number(value);
           break;
         }
         case 9: {  // time_nanos
-          profile->time_nanos = get_number(value);
+          profile.time_nanos = get_number(value);
           break;
         }
         case 10: {  // duration_nanos
-          profile->duration_nanos = get_number(value);
+          profile.duration_nanos = get_number(value);
           break;
         }
         case 11: {  // period_type
           auto result = ValueType::decode(value);
           if (!result.is_ok) return Err<Profile, Error>(result.error);
-          profile->period_type = result.value;
+          profile.period_type = result.value;
           break;
         }
         case 12: {  // period
-          profile->period = get_number(value);
+          profile.period = get_number(value);
           break;
         }
         case 13: {  // comment
-          profile->comment.push_back(get_number(value));
+          profile.comment.push_back(get_number(value));
           break;
         }
         case 14: {  // default_sample_type
-          profile->default_sample_type = get_number(value);
+          profile.default_sample_type = get_number(value);
           break;
         }
       }
@@ -608,117 +608,115 @@ struct Profile {
 //
 // Tests
 //
-std::string lookup(Profile* profile, int64_t index) {
-  return profile->string_table.at(index);
+std::string lookup(const Profile& profile, int64_t index) {
+  return profile.string_table.at(index);
 }
-Location* get_location(Profile* profile, int64_t id) {
-  return profile->locations.at(id - 1);
+Location get_location(const Profile& profile, int64_t id) {
+  return profile.locations.at(id - 1);
 }
-Function* get_function(Profile* profile, int64_t id) {
-  return profile->functions.at(id - 1);
+Function get_function(const Profile& profile, int64_t id) {
+  return profile.functions.at(id - 1);
 }
-Mapping* get_mapping(Profile* profile, int64_t id) {
-  return profile->mappings.at(id - 1);
+Mapping get_mapping(const Profile& profile, int64_t id) {
+  return profile.mappings.at(id - 1);
 }
 
 template<typename E, typename R>
-void compare(Tap* t, Profile* profile, E expected, R received,
+void compare(Tap* t, const Profile& profile, E expected, R received,
   const std::string& name);
 
 template<typename E, typename R,
   std::enable_if_t<!std::is_arithmetic<E>::value, bool> = true>
-void compare(Tap* t, Profile* profile, std::vector<E> expected,
-  std::vector<R> received);
+void compare(Tap* t, const Profile& profile, const std::vector<E>& expected,
+  const std::vector<R>& received);
 
-void compare(Tap* t, Profile* profile, std::vector<int64_t> expected,
-  std::vector<int64_t> received) {
+void compare(Tap* t, const Profile& profile,
+  const std::vector<int64_t>& expected, const std::vector<int64_t>& received) {
   t->plan(2);
   t->equal(expected.size(), received.size(), "count");
   t->equal(expected, received, "is equal");
 }
 
-void compare(Tap* t, Profile* profile, const pprof::ValueType& expected,
-  ValueType* received) {
-  t->plan(3);
-  t->ok(received != nullptr, "parsed value_type is non-null");
-  t->equal(lookup(profile, received->type), expected.type, "type");
-  t->equal(lookup(profile, received->unit), expected.unit, "unit");
+void compare(Tap* t, const Profile& profile, const pprof::ValueType& expected,
+  const ValueType& received) {
+  t->plan(2);
+  t->equal(lookup(profile, received.type), expected.type, "type");
+  t->equal(lookup(profile, received.unit), expected.unit, "unit");
 }
 
-void compare(Tap* t, Profile* profile, const pprof::Function& expected,
-  Function* received) {
+void compare(Tap* t, const Profile& profile, const pprof::Function& expected,
+  const Function& received) {
   t->plan(4);
-  t->equal(lookup(profile, received->name), expected.name, "name");
-  t->equal(lookup(profile, received->system_name), expected.system_name,
+  t->equal(lookup(profile, received.name), expected.name, "name");
+  t->equal(lookup(profile, received.system_name), expected.system_name,
     "system_name");
-  t->equal(lookup(profile, received->filename), expected.filename, "filename");
-  t->equal(received->start_line, expected.start_line, "start_line");
+  t->equal(lookup(profile, received.filename), expected.filename, "filename");
+  t->equal(received.start_line, expected.start_line, "start_line");
 }
 
-void compare(Tap* t, Profile* profile, const pprof::Line& expected,
-  Line* received) {
+void compare(Tap* t, const Profile& profile, const pprof::Line& expected,
+  const Line& received) {
   t->plan(3);
-  t->equal(received->line_number, expected.line, "line_number");
+  t->equal(received.line_number, expected.line, "line_number");
 
-  auto function = get_function(profile, received->function_id);
-  t->equal(function->id, received->function_id, "function_id");
+  auto function = get_function(profile, received.function_id);
+  t->equal(function.id, received.function_id, "function_id");
   compare(t, profile, expected.function, function, "function");
 }
 
-void compare(Tap* t, Profile* profile, const pprof::Mapping& expected,
+void compare(Tap* t, const Profile& profile, const pprof::Mapping& expected,
   int64_t received) {
   t->plan(10);
   auto mapping = get_mapping(profile, received);
-  t->equal(mapping->id, received, "mapping_id");
-  t->equal(mapping->memory_start, expected.memory_start, "memory_start");
-  t->equal(mapping->memory_limit, expected.memory_limit, "memory_limit");
-  t->equal(mapping->file_offset, expected.file_offset, "file_offset");
-  t->equal(mapping->filename, expected.filename, "filename");
-  t->equal(mapping->build_id, expected.build_id, "build_id");
-  t->equal(mapping->has_functions, expected.has_functions, "has_functions");
-  t->equal(mapping->has_filenames, expected.has_filenames, "has_filenames");
-  t->equal(mapping->has_line_numbers, expected.has_line_numbers,
+  t->equal(mapping.id, received, "mapping_id");
+  t->equal(mapping.memory_start, expected.memory_start, "memory_start");
+  t->equal(mapping.memory_limit, expected.memory_limit, "memory_limit");
+  t->equal(mapping.file_offset, expected.file_offset, "file_offset");
+  t->equal(mapping.filename, expected.filename, "filename");
+  t->equal(mapping.build_id, expected.build_id, "build_id");
+  t->equal(mapping.has_functions, expected.has_functions, "has_functions");
+  t->equal(mapping.has_filenames, expected.has_filenames, "has_filenames");
+  t->equal(mapping.has_line_numbers, expected.has_line_numbers,
     "has_line_numbers");
-  t->equal(mapping->has_inline_frames, expected.has_inline_frames,
+  t->equal(mapping.has_inline_frames, expected.has_inline_frames,
     "has_inline_frames");
 }
 
-void compare(Tap* t, Profile* profile, const pprof::Location& expected,
+void compare(Tap* t, const Profile& profile, const pprof::Location& expected,
   int64_t received) {
   auto location = get_location(profile, received);
-  t->plan(4 + (location->mapping_id ? 1 : 0));
-  t->equal(received, location->id, "id");
-  t->equal(expected.address, location->address, "address");
-  t->equal(expected.is_folded, location->is_folded, "is_folded");
-  if (location->mapping_id) {
-    compare(t, profile, expected.mapping, location->mapping_id, "mapping");
+  t->plan(4 + (location.mapping_id ? 1 : 0));
+  t->equal(received, location.id, "id");
+  t->equal(expected.address, location.address, "address");
+  t->equal(expected.is_folded, location.is_folded, "is_folded");
+  if (location.mapping_id) {
+    compare(t, profile, expected.mapping, location.mapping_id, "mapping");
   }
 
-  compare(t, profile, expected.lines, location->lines, "line");
+  compare(t, profile, expected.lines, location.lines, "line");
 }
 
-void compare(Tap* t, Profile* profile, const pprof::Label& expected,
-  Label* received) {
+void compare(Tap* t, const Profile& profile, const pprof::Label& expected,
+  const Label& received) {
   t->plan(4);
-  t->equal(lookup(profile, received->key), expected.key, "key");
-  t->equal(lookup(profile, received->str), expected.str, "str");
-  t->equal(received->num, expected.num, "num");
-  t->equal(lookup(profile, received->num_unit), expected.num_unit, "num_unit");
+  t->equal(lookup(profile, received.key), expected.key, "key");
+  t->equal(lookup(profile, received.str), expected.str, "str");
+  t->equal(received.num, expected.num, "num");
+  t->equal(lookup(profile, received.num_unit), expected.num_unit, "num_unit");
 }
 
-void compare(Tap* t, Profile* profile, const pprof::Sample& expected,
-  Sample* received) {
-  t->plan(4);
-  t->ok(received != nullptr, "parsed value_type is non-null");
-  compare(t, profile, expected.values, received->values, "values");
-  compare(t, profile, expected.locations, received->location_ids, "location");
-  compare(t, profile, expected.labels, received->labels, "label");
+void compare(Tap* t, const Profile& profile, const pprof::Sample& expected,
+  const Sample& received) {
+  t->plan(3);
+  compare(t, profile, expected.values, received.values, "values");
+  compare(t, profile, expected.locations, received.location_ids, "location");
+  compare(t, profile, expected.labels, received.labels, "label");
 }
 
 template<typename E, typename R,
   std::enable_if_t<!std::is_arithmetic<E>::value, bool>>
-void compare(Tap* t, Profile* profile, std::vector<E> expected,
-  std::vector<R> received) {
+void compare(Tap* t, const Profile& profile, const std::vector<E>& expected,
+  const std::vector<R>& received) {
   t->plan(expected.size() + 1);
   t->equal(expected.size(), received.size(), "count");
   for (size_t i = 0; i < expected.size(); i++) {
@@ -729,26 +727,26 @@ void compare(Tap* t, Profile* profile, std::vector<E> expected,
 }
 
 template<typename E, typename R>
-void compare(Tap* t, Profile* profile, E expected, R received,
+void compare(Tap* t, const Profile& profile, E expected, R received,
   const std::string& name) {
   t->test(name, [=](Tap* t) { compare(t, profile, expected, received); });
 }
 
-void compare(Tap* t, const pprof::Profile& expected, Profile* received) {
+void compare(Tap* t, const pprof::Profile& expected, const Profile& received) {
   t->plan(9);
-  t->equal(received->drop_frames, expected.drop_frames, "drop_frames");
-  t->equal(received->keep_frames, expected.keep_frames, "keep_frames");
-  t->equal(received->time_nanos, expected.time_nanos, "time_nanos");
-  t->equal(received->duration_nanos, expected.duration_nanos,
+  t->equal(received.drop_frames, expected.drop_frames, "drop_frames");
+  t->equal(received.keep_frames, expected.keep_frames, "keep_frames");
+  t->equal(received.time_nanos, expected.time_nanos, "time_nanos");
+  t->equal(received.duration_nanos, expected.duration_nanos,
     "duration_nanos");
-  t->equal(received->period, expected.period, "period");
-  t->equal(received->default_sample_type, expected.default_sample_type,
+  t->equal(received.period, expected.period, "period");
+  t->equal(received.default_sample_type, expected.default_sample_type,
     "default_sample_type");
-  compare(t, received, expected.period_type, received->period_type,
+  compare(t, received, expected.period_type, received.period_type,
     "period_type");
-  compare(t, received, expected.sample_type, received->sample_types,
+  compare(t, received, expected.sample_type, received.sample_types,
     "sample_type");
-  compare(t, received, expected.sample, received->samples, "sample");
+  compare(t, received, expected.sample, received.samples, "sample");
 }
 
 int main() {
@@ -809,10 +807,10 @@ int main() {
     if (!result_profile.is_ok) return;
 
     auto parsed = result_profile.value;
-    t->equal(static_cast<int>(parsed->samples.size()), 2, "has two samples");
-    t->equal(static_cast<int>(parsed->locations.size()), 1, "has one location");
-    t->equal(static_cast<int>(parsed->functions.size()), 1, "has one function");
-    t->equal(static_cast<int>(parsed->mappings.size()), 1, "has one mapping");
+    t->equal(static_cast<int>(parsed.samples.size()), 2, "has two samples");
+    t->equal(static_cast<int>(parsed.locations.size()), 1, "has one location");
+    t->equal(static_cast<int>(parsed.functions.size()), 1, "has one function");
+    t->equal(static_cast<int>(parsed.mappings.size()), 1, "has one mapping");
   });
 
   return t.end();

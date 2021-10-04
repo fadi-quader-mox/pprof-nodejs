@@ -20,35 +20,37 @@ template<typename V, typename E>
 struct Result {
   bool is_ok = false;
   union {
-    V* value;
-    E* error;
+    V value;
+    E error;
   };
 
-  explicit Result(V* value) : is_ok(true), value(value) {}
-  explicit Result(E* error) : is_ok(false), error(error) {}
+  explicit Result(const V& value) : is_ok(true), value(value) {}
+  explicit Result(const E& error) : is_ok(false), error(error) {}
+
+  Result(const Result& rhs) : is_ok(rhs.is_ok) {
+    if (is_ok) {
+      value = rhs.value;
+    } else {
+      error = rhs.error;
+    }
+  }
+
+  ~Result() {
+    if (is_ok) {
+      value.~V();
+    } else {
+      error.~E();
+    }
+  }
 };
+
 template<typename V, typename E>
-Result<V, E> Ok(V* value) {
+const Result<V, E> Ok(const V& value) {
   return Result<V, E>(value);
 }
-template<typename V, typename E>
-Result<V, E> Ok(const V& value) {
-  return Result<V, E>(&value);
-}
-template<typename V, typename E>
-Result<V, E> Ok(V&& value) {
-  return Result<V, E>(value);
-}
+
 template <typename V, typename E>
-Result<V, E> Err(E* error) {
-  return Result<V, E>(error);
-}
-template <typename V, typename E>
-Result<V, E> Err(const E& error) {
-  return Result<V, E>(&error);
-}
-template <typename V, typename E>
-Result<V, E> Err(E&& error) {
+const Result<V, E> Err(const E& error) {
   return Result<V, E>(error);
 }
 
