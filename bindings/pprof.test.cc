@@ -26,7 +26,7 @@
 //
 // Byte array manipulation
 //
-std::string hex(std::vector<char> data) {
+std::string hex(const std::vector<char>& data) {
   std::stringstream ss;
   ss << std::hex;
   for (size_t i = 0; i < data.size(); i++) {
@@ -35,14 +35,15 @@ std::string hex(std::vector<char> data) {
   return ss.str();
 }
 
-std::vector<char> slice(std::vector<char> bytes, int start = 0, int end = -1) {
+std::vector<char> slice(const std::vector<char>& bytes, int start = 0,
+  int end = -1) {
   end = (end < 0 ? bytes.size() + 1 : start) + end;
   end = std::min(std::max(end, start), static_cast<int>(bytes.size()));
   std::vector<char> result(bytes.begin() + start, bytes.begin() + end);
   return result;
 }
 
-std::vector<char> slice(std::string str, int start = 0, int end = -1) {
+std::vector<char> slice(const std::string& str, int start = 0, int end = -1) {
   std::vector<char> bytes(str.begin(), str.end());
   return slice(bytes, start, end);
 }
@@ -66,7 +67,7 @@ struct FieldFlag {
       mode(flag & 0b111) {}
 };
 
-std::vector<char> get_value(int mode, std::vector<char> bytes) {
+std::vector<char> get_value(int mode, const std::vector<char>& bytes) {
   switch (mode) {
     case kTypeVarInt: {  // var-int
       for (size_t i = 0; i < bytes.size(); i++) {
@@ -84,7 +85,7 @@ std::vector<char> get_value(int mode, std::vector<char> bytes) {
   return {};
 }
 
-int64_t get_number(std::vector<char> bytes) {
+int64_t get_number(const std::vector<char>& bytes) {
   int64_t value = 0;
   for (size_t i = 0; i < bytes.size(); i++) {
     int byte = bytes[i];
@@ -94,7 +95,7 @@ int64_t get_number(std::vector<char> bytes) {
   return value;
 }
 
-std::vector<int64_t> get_numbers(std::vector<char> bytes) {
+std::vector<int64_t> get_numbers(const std::vector<char>& bytes) {
   std::vector<int64_t> numbers;
 
   for (size_t i = 0, start = 0; i < bytes.size(); i++) {
@@ -107,7 +108,7 @@ std::vector<int64_t> get_numbers(std::vector<char> bytes) {
   return numbers;
 }
 
-std::string get_string(std::vector<char> bytes) {
+std::string get_string(const std::vector<char>& bytes) {
   return std::string(bytes.begin(), bytes.end());
 }
 
@@ -121,7 +122,7 @@ struct ValueType {
     return type == rhs.type && unit == rhs.unit;
   }
 
-  static Result<ValueType, Error> decode(std::vector<char> bytes) {
+  static Result<ValueType, Error> decode(const std::vector<char>& bytes) {
     ValueType* value_type = new ValueType();
 
     size_t index = 0;
@@ -129,7 +130,7 @@ struct ValueType {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {
@@ -163,7 +164,7 @@ struct Label {
       num_unit == rhs.num_unit;
   }
 
-  static Result<Label, Error> decode(std::vector<char> bytes) {
+  static Result<Label, Error> decode(const std::vector<char>& bytes) {
     Label* label = new Label();
 
     size_t index = 0;
@@ -171,7 +172,7 @@ struct Label {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {
@@ -211,7 +212,7 @@ struct Sample {
       labels == rhs.labels;
   }
 
-  static Result<Sample, Error> decode(std::vector<char> bytes) {
+  static Result<Sample, Error> decode(const std::vector<char>& bytes) {
     Sample* sample = new Sample();
 
     size_t index = 0;
@@ -219,7 +220,7 @@ struct Sample {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {
@@ -271,7 +272,7 @@ struct Mapping {
       has_inline_frames == rhs.has_inline_frames;
   }
 
-  static Result<Mapping, Error> decode(std::vector<char> bytes) {
+  static Result<Mapping, Error> decode(const std::vector<char>& bytes) {
     Mapping* mapping = new Mapping();
 
     size_t index = 0;
@@ -279,7 +280,7 @@ struct Mapping {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {
@@ -347,7 +348,7 @@ struct Function {
       start_line == rhs.start_line;
   }
 
-  static Result<Function, Error> decode(std::vector<char> bytes) {
+  static Result<Function, Error> decode(const std::vector<char>& bytes) {
     Function* function = new Function();
 
     size_t index = 0;
@@ -355,7 +356,7 @@ struct Function {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {
@@ -397,7 +398,7 @@ struct Line {
       line_number == rhs.line_number;
   }
 
-  static Result<Line, Error> decode(std::vector<char> bytes) {
+  static Result<Line, Error> decode(const std::vector<char>& bytes) {
     Line* line = new Line();
 
     size_t index = 0;
@@ -405,7 +406,7 @@ struct Line {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {
@@ -441,7 +442,7 @@ struct Location {
       is_folded != rhs.is_folded;
   }
 
-  static Result<Location, Error> decode(std::vector<char> bytes) {
+  static Result<Location, Error> decode(const std::vector<char>& bytes) {
     Location* location = new Location();
 
     size_t index = 0;
@@ -449,7 +450,7 @@ struct Location {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {
@@ -517,7 +518,7 @@ struct Profile {
       default_sample_type == rhs.default_sample_type;
   }
 
-  static Result<Profile, Error> decode(std::vector<char> bytes) {
+  static Result<Profile, Error> decode(const std::vector<char>& bytes) {
     Profile* profile = new Profile();
 
     size_t index = 0;
@@ -525,7 +526,7 @@ struct Profile {
       FieldFlag flag(bytes[index]);
       index++;
 
-      std::vector<char> value = get_value(flag.mode, slice(bytes, index));
+      auto value = get_value(flag.mode, slice(bytes, index));
       index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
 
       switch (flag.field) {

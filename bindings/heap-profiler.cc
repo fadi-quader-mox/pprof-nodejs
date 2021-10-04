@@ -66,27 +66,19 @@ void HeapProfileEncoder::Execute() {
   // Capture (external) allocations
   {
     std::string name = "(external)";
-    std::string scriptName = "";
-    auto location = GetLocation(name, name, scriptName, 0);
-    std::vector<pprof::Location> stack = {location};
-    profile.add_sample(MakeSample(stack, externalMemory, 1));
+    auto location = GetLocation(name, name, "", 0);
+    profile.add_sample(MakeSample({location}, externalMemory, 1));
   }
 
   // Process node queue
   while (children.size() > 0) {
     // Get last node
-    std::shared_ptr<AllocationNode> node = children.back();
+    auto node = children.back();
     children.pop_back();
 
     // Find function and script names
     auto scriptName = fallback(node->script_name, "<native>");
     auto name = fallback(node->name, "(anonymous)");
-
-    // Filter out some nodes we're not interested in
-    // TODO(qard): Finish converting this
-    // if (ignoreSamplesPath && scriptName.indexOf(ignoreSamplesPath) > -1) {
-    //   continue;
-    // }
 
     // Create call location for this sample
     auto location =
@@ -110,8 +102,7 @@ void HeapProfileEncoder::Execute() {
   }
 
   // Encode to pprof buffer
-  pprof::Encoder encoder;
-  output = encoder.encode(profile);
+  output = pprof::Encoder().encode(profile);
 }
 
 void HeapProfileEncoder::OnOK() {
@@ -156,6 +147,7 @@ Napi::Value StopSamplingHeapProfiler(const Napi::CallbackInfo& info) {
 
 Napi::Value GetAllocationProfile(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  auto isolate = v8::Isolate::GetCurrent();
 
   if (info.Length() != 1) {
     Napi::TypeError::New(env, "getAllocationProfile must have two arguments.")
@@ -170,8 +162,8 @@ Napi::Value GetAllocationProfile(const Napi::CallbackInfo& info) {
 
   uint32_t intervalBytes = info[0].As<Napi::Number>().Uint32Value();
 
-  // Capture profiler
-  v8::HeapProfiler* profiler = v8::Isolate::GetCurrent()->GetHeapProfiler();
+  // Capture heap profile
+  auto profiler = isolate->GetHeapProfiler();
   std::unique_ptr<v8::AllocationProfile> heap(
     profiler->GetAllocationProfile());
   if (heap == nullptr) {
@@ -181,10 +173,12 @@ Napi::Value GetAllocationProfile(const Napi::CallbackInfo& info) {
     return env.Null();
   }
 
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  // Transform non-thread-safe allocation profile into a thread-safe type
   std::unique_ptr<AllocationNode> root =
     std::make_unique<AllocationNode>(isolate, heap->GetRootNode());
 
+  // Create a promise worker to encoder the allocation profile
+  // NOTE: This instance is managed, so don't `delete` it.
   HeapProfileEncoder* encoder =
     new HeapProfileEncoder(env, std::move(root), intervalBytes);
 

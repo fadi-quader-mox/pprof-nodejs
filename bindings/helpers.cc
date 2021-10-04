@@ -29,14 +29,14 @@ std::string fallback(const std::string& a, const std::string& b) {
 }
 
 std::string fallback(v8::Local<v8::String> a, const std::string& b) {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  auto isolate = v8::Isolate::GetCurrent();
   return a->Length()
     ? *v8::String::Utf8Value(isolate, a)
     : b;
 }
 
 v8::Local<v8::String> ToString(const std::string& data) {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  auto isolate = v8::Isolate::GetCurrent();
   return v8::String::NewFromUtf8(isolate, data.data(),
     v8::NewStringType::kInternalized).ToLocalChecked();
 }

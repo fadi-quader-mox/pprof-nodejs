@@ -95,10 +95,7 @@ std::string Encoder::encode_length_delimited(uint8_t index, const T& value) {
 }
 template <typename T>
 std::string Encoder::encode_length_delimited_with_id(
-  uint8_t id,
-  uint8_t index,
-  const T& value
-) {
+  uint8_t id, uint8_t index, const T& value) {
   std::ostringstream bytes;
   bytes << static_cast<char>((index << 3) | WireTypeLengthDelimited);
   std::string encoded_value = encode(id, value);
@@ -135,7 +132,7 @@ std::string Encoder::encode(const Sample& sample) {
       sample.locations.begin(),
       sample.locations.end(),
       std::back_inserter(ids),
-      [this](pprof::Location location) -> uint64_t {
+      [this](const pprof::Location& location) -> uint64_t {
         return this->dedup(location);
       });
 

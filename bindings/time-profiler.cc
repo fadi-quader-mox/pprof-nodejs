@@ -27,10 +27,9 @@ TimeProfileEncoder::TimeProfileEncoder(const Napi::Env& env,
                                        int nanos)
   : PromiseWorker(env),
     cpuProfiler(profiler),
+    cpuProfile(cpuProfiler->StopProfiling(name)),
     intervalNanos(nanos),
-    startTime(now()) {
-  cpuProfile = cpuProfiler->StopProfiling(name);
-}
+    startTime(now()) {}
 
 TimeProfileEncoder::~TimeProfileEncoder() {
   cpuProfile->Delete();
@@ -56,7 +55,7 @@ void TimeProfileEncoder::Execute() {
   std::map<const v8::CpuProfileNode*, std::vector<pprof::Location>> nodeStacks;
   std::vector<const v8::CpuProfileNode*> children;
 
-  const v8::CpuProfileNode* root = cpuProfile->GetTopDownRoot();
+  auto root = cpuProfile->GetTopDownRoot();
   for (int i = 0; i < root->GetChildrenCount(); i++) {
     auto child = root->GetChild(i);
     nodeStacks[child] = {};
@@ -66,7 +65,7 @@ void TimeProfileEncoder::Execute() {
   // Process node queue
   while (children.size() > 0) {
     // Get last node
-    const v8::CpuProfileNode* node = children.back();
+    auto node = children.back();
     children.pop_back();
 
     // Find function and script names
@@ -101,8 +100,7 @@ void TimeProfileEncoder::Execute() {
   }
 
   // Encode to pprof buffer
-  pprof::Encoder encoder;
-  output = encoder.encode(profile);
+  output = pprof::Encoder().encode(profile);
 }
 
 void TimeProfileEncoder::OnOK() {
@@ -117,7 +115,7 @@ Napi::FunctionReference TimeProfiler::constructor;
 
 TimeProfiler::TimeProfiler(const Napi::CallbackInfo& info)
     : Napi::ObjectWrap<TimeProfiler>(info) {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  auto isolate = v8::Isolate::GetCurrent();
   Napi::Env env = info.Env();
 
   if (info.Length() != 1 || !info[0].IsNumber()) {
@@ -190,6 +188,8 @@ Napi::Value TimeProfiler::Stop(const Napi::CallbackInfo& info) {
   v8::Local<v8::String> name = ToString(info[0].As<Napi::String>());
   int intervalNanos = info[1].As<Napi::Number>().Int32Value() * 1000;
 
+  // Create a promise worker to encoder the time profile
+  // NOTE: This instance is managed, so don't `delete` it.
   TimeProfileEncoder* encoder = new TimeProfileEncoder(
     env, cpuProfiler, name, intervalNanos);
 

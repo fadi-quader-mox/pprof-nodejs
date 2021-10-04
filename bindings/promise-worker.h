@@ -27,6 +27,6 @@ class PromiseWorker : public Napi::AsyncWorker {
       deferred(Napi::Promise::Deferred::New(env)) {}
 
   Napi::Promise Promise() const;
-  void Resolve(const Napi::Value& resolution);
-  void Reject(const Napi::Value& rejection);
+  void Resolve(const Napi::Value& resolution) const;
+  void Reject(const Napi::Value& rejection) const;
 };

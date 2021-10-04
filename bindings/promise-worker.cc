@@ -20,10 +20,10 @@ Napi::Promise PromiseWorker::Promise() const {
   return deferred.Promise();
 }
 
-void PromiseWorker::Resolve(const Napi::Value& resolution) {
+void PromiseWorker::Resolve(const Napi::Value& resolution) const {
   deferred.Resolve(resolution);
 }
 
-void PromiseWorker::Reject(const Napi::Value& rejection) {
+void PromiseWorker::Reject(const Napi::Value& rejection) const {
   deferred.Reject(rejection);
 }
