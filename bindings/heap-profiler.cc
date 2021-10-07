@@ -21,6 +21,17 @@
 
 #include "heap-profiler.h"
 
+// Statically allocate some things that will never change
+static const std::string native_string = "<native>";
+static const std::string anonymous_string = "(anonymous)";
+static const std::string external_string = "(external)";
+
+static const pprof::ValueType objects_count("objects", "count");
+static const pprof::ValueType space_bytes("space", "bytes");
+
+static const pprof::Location external_location =
+  GetLocation(external_string, external_string, "", 0);
+
 AllocationNode::AllocationNode(v8::Isolate* isolate,
   v8::AllocationProfile::Node* node)
   : name(*v8::String::Utf8Value(isolate, node->name)),
@@ -48,9 +59,7 @@ HeapProfileEncoder::HeapProfileEncoder(const Napi::Env& env,
 }
 
 void HeapProfileEncoder::Execute() {
-  pprof::ValueType object_count("object", "count");
-  pprof::ValueType heap_bytes("heap", "bytes");
-  pprof::Profile profile(object_count, heap_bytes);
+  pprof::Profile profile(objects_count, space_bytes);
   profile.time_nanos = startTime;
   profile.period = intervalBytes;
 
@@ -64,11 +73,7 @@ void HeapProfileEncoder::Execute() {
   }
 
   // Capture (external) allocations
-  {
-    std::string name = "(external)";
-    auto location = GetLocation(name, name, "", 0);
-    profile.add_sample(MakeSample({location}, externalMemory, 1));
-  }
+  profile.add_sample(MakeSample({external_location}, externalMemory, 1));
 
   // Process node queue
   while (children.size() > 0) {
@@ -77,8 +82,8 @@ void HeapProfileEncoder::Execute() {
     children.pop_back();
 
     // Find function and script names
-    auto scriptName = fallback(node->script_name, "<native>");
-    auto name = fallback(node->name, "(anonymous)");
+    auto scriptName = fallback(node->script_name, native_string);
+    auto name = fallback(node->name, anonymous_string);
 
     // Create call location for this sample
     auto location =

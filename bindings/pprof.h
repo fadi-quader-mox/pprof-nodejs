@@ -106,14 +106,14 @@ struct Mapping {
 
 struct Function {
   // 1 - id
-  std::string name = 0;         // 2
-  std::string system_name = 0;  // 3
-  std::string filename = 0;     // 4
-  int64_t start_line = 0;       // 5
+  std::string name = "";         // 2
+  std::string system_name = "";  // 3
+  std::string filename = "";     // 4
+  int64_t start_line = 0;        // 5
 
-  Function(const std::string& name,
-           const std::string& system_name,
-           const std::string& filename,
+  Function(const std::string& name = "",
+           const std::string& system_name = "",
+           const std::string& filename = "",
            int64_t start_line = 0)
     : name(name),
       system_name(system_name),
@@ -148,16 +148,8 @@ struct Location {
   std::vector<Line> lines;   // 4
   bool is_folded = false;    // 5
 
-  explicit Location(const std::vector<Line>& lines,
-                    uint64_t address = 0,
-                    bool is_folded = false)
-    : mapping(),
-      address(address),
-      lines(lines),
-      is_folded(is_folded) {}
-
-  explicit Location(const std::vector<Line>& lines,
-                    const Mapping& mapping,
+  explicit Location(const std::vector<Line>& lines = {},
+                    const Mapping& mapping = Mapping(),
                     uint64_t address = 0,
                     bool is_folded = false)
     : mapping(mapping),
@@ -254,15 +246,15 @@ class Encoder {
   std::string encode_length_delimited(uint8_t index, const T& value);
   template <typename T>
   std::string encode_length_delimited_with_id(
-    uint8_t id, uint8_t index, const T& value);
+    uint64_t id, uint8_t index, const T& value);
   std::string encode_string(uint8_t index, const std::string& str);
   std::string encode(const ValueType& value_type);
   std::string encode(const Label& label);
   std::string encode(const Sample& sample);
-  std::string encode(uint8_t id, const Mapping& mapping);
+  std::string encode(uint64_t id, const Mapping& mapping);
   std::string encode(const Line& line);
-  std::string encode(uint8_t id, const Location& location);
-  std::string encode(uint8_t id, const Function& function);
+  std::string encode(uint64_t id, const Location& location);
+  std::string encode(uint64_t id, const Function& function);
   std::string encode(const Profile& profile);
 };
 

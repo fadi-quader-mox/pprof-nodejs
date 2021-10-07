@@ -9,12 +9,18 @@ function decodeFieldFlag(value: number) {
   return {field, mode};
 }
 
-function decodeBigNumber(buffer: Buffer): bigint {
-  let value = BigInt(0);
-  for (let i = 0; i < buffer.length; i++) {
+function decodeBigNumberWithSize(buffer: Buffer): [number, bigint] {
+  if (!buffer.length) return [ 0, BigInt(0) ];
+  let value = BigInt(buffer[0] & 0b01111111);
+  let i = 0;
+  while (buffer[i++] >= 0b10000000) {
     value |= BigInt(buffer[i] & 0b01111111) << BigInt(7 * i);
   }
-  return value;
+  return [ i, value ];
+}
+
+function decodeBigNumber(buffer: Buffer): bigint {
+  return decodeBigNumberWithSize(buffer)[1];;
 }
 
 function decodeBigNumbers<T extends number & bigint>(buffer: Buffer): Array<T> {
@@ -39,17 +45,22 @@ function decodeNumbers(buffer: Buffer): Array<number> {
   return decodeBigNumbers(buffer).map(Number);
 }
 
+function makeValue(value: Buffer, offset = 0) {
+  return { value, offset }
+}
+
 function getValue(mode: number, buffer: Buffer) {
   switch (mode) {
     case kTypeVarInt:
       for (let i = 0; i < buffer.length; i++) {
         if (!(buffer[i] & 0b10000000)) {
-          return buffer.slice(0, i + 1);
+          return makeValue(buffer.slice(0, i + 1));
         }
       }
-      return buffer;
+      return makeValue(buffer);
     case kTypeLengthDelim:
-      return buffer.slice(1, buffer[0] + 1);
+      const [offset, size] = decodeBigNumberWithSize(buffer);
+      return makeValue(buffer.slice(offset, Number(size) + 1), offset);
     default:
       throw new Error(`Unrecognized value type: ${mode}`);
   }
@@ -96,8 +107,8 @@ export class ValueType implements IValueType {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }
@@ -155,8 +166,8 @@ export class Label implements ILabel {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }
@@ -207,8 +218,8 @@ export class Sample implements ISample {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }
@@ -308,8 +319,8 @@ export class Mapping implements IMapping {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }
@@ -355,8 +366,8 @@ export class Line implements ILine {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }
@@ -418,8 +429,8 @@ export class Location implements ILocation {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }
@@ -484,8 +495,8 @@ export class Function implements IFunction {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }
@@ -630,8 +641,8 @@ export class Profile implements IProfile {
       const {field, mode} = decodeFieldFlag(buffer[index]);
       index++;
 
-      const value = getValue(mode, buffer.slice(index));
-      index += value.length + (mode === kTypeLengthDelim ? 1 : 0);
+      const { offset, value } = getValue(mode, buffer.slice(index));
+      index += value.length + offset;
 
       this.decodeValue(data, field, value);
     }

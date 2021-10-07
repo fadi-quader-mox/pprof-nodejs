@@ -30,7 +30,7 @@ std::string hex(const std::vector<char>& data) {
   std::stringstream ss;
   ss << std::hex;
   for (size_t i = 0; i < data.size(); i++) {
-    ss << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
+    ss << std::setw(2) << std::setfill('0') << (0xff & static_cast<int>(data[i]));
   }
   return ss.str();
 }
@@ -65,24 +65,63 @@ struct FieldFlag {
     : flag(flag),
       field(flag >> 3),
       mode(flag & 0b111) {}
+  
+  static Result<FieldFlag, std::string> New(int byte) {
+    FieldFlag flag(byte);
+    if (flag.mode != 0 && flag.mode != 2) {
+      std::string message = "Invalid flag field: ";
+      message += std::to_string(flag.field);
+      message += ", mode: ";
+      message += std::to_string(flag.mode);
+      return Err<FieldFlag, std::string>(message);
+    }
+    return Ok<FieldFlag, std::string>(flag);
+  }
 };
 
-std::vector<char> get_value(int mode, const std::vector<char>& bytes) {
+struct NumberWithSize {
+  int64_t value = 0;
+  size_t offset = 0;
+};
+
+NumberWithSize get_number_with_size(const std::vector<char>& bytes) {
+  NumberWithSize value;
+  if (!bytes.size()) return value;
+
+  value.value = bytes[0] & kNumberBytes;
+  while (static_cast<uint8_t>(bytes[value.offset++]) >= kHasMoreBytes) {
+    value.value |= (bytes[value.offset] & kNumberBytes) << (7 * value.offset);
+  }
+
+  return value;
+}
+
+struct Value {
+  std::vector<char> value;
+  size_t offset = 0;
+
+  Value(const std::vector<char>& value) : value(value) {}
+  Value(const std::vector<char>& value, size_t offset)
+    : value(value), offset(offset) {}
+};
+
+Value get_value(int mode, const std::vector<char>& bytes) {
   switch (mode) {
     case kTypeVarInt: {  // var-int
       for (size_t i = 0; i < bytes.size(); i++) {
         if (!(bytes[i] & kHasMoreBytes)) {
-          return slice(bytes, 0, i + 1);
+          return Value(slice(bytes, 0, i + 1));
         }
       }
-      return bytes;
+      break;
     }
     case kTypeLengthDelim: {  // length-delimited
-      return slice(bytes, 1, bytes[0]);
+      NumberWithSize value = get_number_with_size(bytes);
+      return Value(slice(bytes, value.offset, value.value), value.offset);
     }
   }
 
-  return {};
+  return Value(bytes);
 }
 
 int64_t get_number(const std::vector<char>& bytes) {
@@ -122,30 +161,32 @@ struct ValueType {
     return type == rhs.type && unit == rhs.unit;
   }
 
-  static Result<ValueType, Error> decode(const std::vector<char>& bytes) {
+  static Result<ValueType, std::string> decode(const std::vector<char>& bytes) {
     ValueType value_type;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<ValueType, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // type
-          value_type.type = get_number(value);
+          value_type.type = get_number(value.value);
           break;
         }
         case 2: {  // unit
-          value_type.unit = get_number(value);
+          value_type.unit = get_number(value.value);
           break;
         }
       }
     }
 
-    return Ok<ValueType, Error>(value_type);
+    return Ok<ValueType, std::string>(value_type);
   }
 };
 
@@ -164,38 +205,40 @@ struct Label {
       num_unit == rhs.num_unit;
   }
 
-  static Result<Label, Error> decode(const std::vector<char>& bytes) {
+  static Result<Label, std::string> decode(const std::vector<char>& bytes) {
     Label label;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Label, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // key
-          label.key = get_number(value);
+          label.key = get_number(value.value);
           break;
         }
         case 2: {  // str
-          label.str = get_number(value);
+          label.str = get_number(value.value);
           break;
         }
         case 3: {  // num
-          label.num = get_number(value);
+          label.num = get_number(value.value);
           break;
         }
         case 4: {  // num_unit
-          label.num_unit = get_number(value);
+          label.num_unit = get_number(value.value);
           break;
         }
       }
     }
 
-    return Ok<Label, Error>(label);
+    return Ok<Label, std::string>(label);
   }
 };
 
@@ -212,36 +255,38 @@ struct Sample {
       labels == rhs.labels;
   }
 
-  static Result<Sample, Error> decode(const std::vector<char>& bytes) {
+  static Result<Sample, std::string> decode(const std::vector<char>& bytes) {
     Sample sample;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Sample, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // location_ids
-          sample.location_ids = get_numbers(value);
+          sample.location_ids = get_numbers(value.value);
           break;
         }
         case 2: {  // values
-          sample.values = get_numbers(value);
+          sample.values = get_numbers(value.value);
           break;
         }
         case 3: {  // labels
-          auto result = Label::decode(value);
-          if (!result.is_ok) return Err<Sample, Error>(result.error);
+          auto result = Label::decode(value.value);
+          if (!result.is_ok) return Err<Sample, std::string>(result.error);
           sample.labels.push_back(result.value);
           break;
         }
       }
     }
 
-    return Ok<Sample, Error>(sample);
+    return Ok<Sample, std::string>(sample);
   }
 };
 
@@ -272,62 +317,64 @@ struct Mapping {
       has_inline_frames == rhs.has_inline_frames;
   }
 
-  static Result<Mapping, Error> decode(const std::vector<char>& bytes) {
+  static Result<Mapping, std::string> decode(const std::vector<char>& bytes) {
     Mapping mapping;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Mapping, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // id
-          mapping.id = get_number(value);
+          mapping.id = get_number(value.value);
           break;
         }
         case 2: {  // memory_start
-          mapping.memory_start = get_number(value);
+          mapping.memory_start = get_number(value.value);
           break;
         }
         case 3: {  // memory_limit
-          mapping.memory_limit = get_number(value);
+          mapping.memory_limit = get_number(value.value);
           break;
         }
         case 4: {  // file_offset
-          mapping.file_offset = get_number(value);
+          mapping.file_offset = get_number(value.value);
           break;
         }
         case 5: {  // filename
-          mapping.filename = get_number(value);
+          mapping.filename = get_number(value.value);
           break;
         }
         case 6: {  // build_id
-          mapping.build_id = get_number(value);
+          mapping.build_id = get_number(value.value);
           break;
         }
         case 7: {  // has_functions
-          mapping.has_functions = get_number(value);
+          mapping.has_functions = get_number(value.value);
           break;
         }
         case 8: {  // has_filenames
-          mapping.has_filenames = get_number(value);
+          mapping.has_filenames = get_number(value.value);
           break;
         }
         case 9: {  // has_line_numbers
-          mapping.has_line_numbers = get_number(value);
+          mapping.has_line_numbers = get_number(value.value);
           break;
         }
         case 10: {  // has_inline_frames
-          mapping.has_inline_frames = get_number(value);
+          mapping.has_inline_frames = get_number(value.value);
           break;
         }
       }
     }
 
-    return Ok<Mapping, Error>(mapping);
+    return Ok<Mapping, std::string>(mapping);
   }
 };
 
@@ -348,42 +395,44 @@ struct Function {
       start_line == rhs.start_line;
   }
 
-  static Result<Function, Error> decode(const std::vector<char>& bytes) {
+  static Result<Function, std::string> decode(const std::vector<char>& bytes) {
     Function function;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Function, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // id
-          function.id = get_number(value);
+          function.id = get_number(value.value);
           break;
         }
         case 2: {  // name
-          function.name = get_number(value);
+          function.name = get_number(value.value);
           break;
         }
         case 3: {  // system_name
-          function.system_name = get_number(value);
+          function.system_name = get_number(value.value);
           break;
         }
         case 4: {  // filename
-          function.filename = get_number(value);
+          function.filename = get_number(value.value);
           break;
         }
         case 5: {  // start_line
-          function.start_line = get_number(value);
+          function.start_line = get_number(value.value);
           break;
         }
       }
     }
 
-    return Ok<Function, Error>(function);
+    return Ok<Function, std::string>(function);
   }
 };
 
@@ -398,36 +447,38 @@ struct Line {
       line_number == rhs.line_number;
   }
 
-  static Result<Line, Error> decode(const std::vector<char>& bytes) {
+  static Result<Line, std::string> decode(const std::vector<char>& bytes) {
     Line line;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Line, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // function_id
-          line.function_id = get_number(value);
+          line.function_id = get_number(value.value);
           break;
         }
         case 2: {  // line_number
-          line.line_number = get_number(value);
+          line.line_number = get_number(value.value);
           break;
         }
       }
     }
 
-    return Ok<Line, Error>(line);
+    return Ok<Line, std::string>(line);
   }
 };
 
 struct Location {
-  int64_t id;
-  int64_t mapping_id;
+  int64_t id = 0;
+  int64_t mapping_id = 0;
   uint64_t address = 0;
   std::vector<Line> lines;
   bool is_folded = false;
@@ -442,44 +493,46 @@ struct Location {
       is_folded != rhs.is_folded;
   }
 
-  static Result<Location, Error> decode(const std::vector<char>& bytes) {
+  static Result<Location, std::string> decode(const std::vector<char>& bytes) {
     Location location;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Location, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // id
-          location.id = get_number(value);
+          location.id = get_number(value.value);
           break;
         }
         case 2: {  // mapping_id
-          location.mapping_id = get_number(value);
+          location.mapping_id = get_number(value.value);
           break;
         }
         case 3: {  // address
-          location.address = get_number(value);
+          location.address = get_number(value.value);
           break;
         }
         case 4: {  // lines
-          auto result = Line::decode(value);
-          if (!result.is_ok) return Err<Location, Error>(result.error);
+          auto result = Line::decode(value.value);
+          if (!result.is_ok) return Err<Location, std::string>(result.error);
           location.lines.push_back(result.value);
           break;
         }
         case 5: {  // is_folded
-          location.is_folded = get_number(value);
+          location.is_folded = get_number(value.value);
           break;
         }
       }
     }
 
-    return Ok<Location, Error>(location);
+    return Ok<Location, std::string>(location);
   }
 };
 
@@ -518,90 +571,92 @@ struct Profile {
       default_sample_type == rhs.default_sample_type;
   }
 
-  static Result<Profile, Error> decode(const std::vector<char>& bytes) {
+  static Result<Profile, std::string> decode(const std::vector<char>& bytes) {
     Profile profile;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      FieldFlag flag(bytes[index]);
+      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Profile, std::string>(flag_result.error);
+      FieldFlag flag = flag_result.value;
       index++;
 
       auto value = get_value(flag.mode, slice(bytes, index));
-      index += value.size() + (flag.mode == kTypeLengthDelim ? 1 : 0);
+      index += value.value.size() + value.offset;
 
       switch (flag.field) {
         case 1: {  // sample_types
-          auto result = ValueType::decode(value);
-          if (!result.is_ok) return Err<Profile, Error>(result.error);
+          auto result = ValueType::decode(value.value);
+          if (!result.is_ok) return Err<Profile, std::string>(result.error);
           profile.sample_types.push_back(result.value);
           break;
         }
         case 2: {  // samples
-          auto result = Sample::decode(value);
-          if (!result.is_ok) return Err<Profile, Error>(result.error);
+          auto result = Sample::decode(value.value);
+          if (!result.is_ok) return Err<Profile, std::string>(result.error);
           profile.samples.push_back(result.value);
           break;
         }
         case 3: {  // mappings
-          auto result = Mapping::decode(value);
-          if (!result.is_ok) return Err<Profile, Error>(result.error);
+          auto result = Mapping::decode(value.value);
+          if (!result.is_ok) return Err<Profile, std::string>(result.error);
           profile.mappings.push_back(result.value);
           break;
         }
         case 4: {  // locations
-          auto result = Location::decode(value);
-          if (!result.is_ok) return Err<Profile, Error>(result.error);
+          auto result = Location::decode(value.value);
+          if (!result.is_ok) return Err<Profile, std::string>(result.error);
           profile.locations.push_back(result.value);
           break;
         }
         case 5: {  // functions
-          auto result = Function::decode(value);
-          if (!result.is_ok) return Err<Profile, Error>(result.error);
+          auto result = Function::decode(value.value);
+          if (!result.is_ok) return Err<Profile, std::string>(result.error);
           profile.functions.push_back(result.value);
           break;
         }
         case 6: {  // string_table
-          profile.string_table.push_back(get_string(value));
+          profile.string_table.push_back(get_string(value.value));
           break;
         }
         case 7: {  // drop_frames
-          profile.drop_frames = get_number(value);
+          profile.drop_frames = get_number(value.value);
           break;
         }
         case 8: {  // keep_frames
-          profile.keep_frames = get_number(value);
+          profile.keep_frames = get_number(value.value);
           break;
         }
         case 9: {  // time_nanos
-          profile.time_nanos = get_number(value);
+          profile.time_nanos = get_number(value.value);
           break;
         }
         case 10: {  // duration_nanos
-          profile.duration_nanos = get_number(value);
+          profile.duration_nanos = get_number(value.value);
           break;
         }
         case 11: {  // period_type
-          auto result = ValueType::decode(value);
-          if (!result.is_ok) return Err<Profile, Error>(result.error);
+          auto result = ValueType::decode(value.value);
+          if (!result.is_ok) return Err<Profile, std::string>(result.error);
           profile.period_type = result.value;
           break;
         }
         case 12: {  // period
-          profile.period = get_number(value);
+          profile.period = get_number(value.value);
           break;
         }
         case 13: {  // comment
-          profile.comment.push_back(get_number(value));
+          profile.comment.push_back(get_number(value.value));
           break;
         }
         case 14: {  // default_sample_type
-          profile.default_sample_type = get_number(value);
+          profile.default_sample_type = get_number(value.value);
           break;
         }
       }
     }
 
-    return Ok<Profile, Error>(profile);
+    return Ok<Profile, std::string>(profile);
   }
 };
 
@@ -685,11 +740,11 @@ void compare(Tap* t, const Profile& profile, const pprof::Mapping& expected,
 void compare(Tap* t, const Profile& profile, const pprof::Location& expected,
   int64_t received) {
   auto location = get_location(profile, received);
-  t->plan(4 + (location.mapping_id ? 1 : 0));
+  t->plan(4 + (location.mapping_id != 0 ? 1 : 0));
   t->equal(received, location.id, "id");
   t->equal(expected.address, location.address, "address");
   t->equal(expected.is_folded, location.is_folded, "is_folded");
-  if (location.mapping_id) {
+  if (location.mapping_id != 0) {
     compare(t, profile, expected.mapping, location.mapping_id, "mapping");
   }
 
@@ -751,7 +806,56 @@ void compare(Tap* t, const pprof::Profile& expected, const Profile& received) {
 
 int main() {
   Tap t;
-  t.plan(2);
+  t.plan(3);
+
+  t.test("number encoding", [](Tap *t) {
+    t->plan(1);
+
+    // Up to 127 fits in one byte
+    for (uint64_t i = 0; i < 128; i++) {
+      std::vector<char> bytes;
+      bytes.push_back(i);
+      std::string expected(bytes.begin(), bytes.end());
+
+      std::string encoded = pprof::Encoder().encode(i);
+      if (encoded != expected) {
+        t->fail("0-127 should have one byte");
+        return;
+      }
+    }
+
+    // 128-255 fits in two bytes
+    for (uint64_t i = 128; i < 256; i++) {
+      std::vector<char> bytes;
+      bytes.push_back(i);
+      bytes.push_back((unsigned char)1);
+      std::string expected(bytes.begin(), bytes.end());
+
+      std::string encoded = pprof::Encoder().encode(i);
+      if (encoded != expected) {
+        t->fail("128-255 should have two bytes");
+        return;
+      }
+    }
+
+    // 256 fits in two bytes with 2 in the second byte
+    uint64_t i = 256;
+    std::vector<char> bytes;
+    bytes.push_back(-128);
+    bytes.push_back((unsigned char)2);
+    std::string expected(bytes.begin(), bytes.end());
+
+    std::string encoded = pprof::Encoder().encode(i);
+    for (auto byte : slice(encoded)) {
+      std::cout << std::to_string(byte) << std::endl;
+    }
+if (encoded != expected) {
+      t->fail("256 should have two bytes");
+      return;
+    }
+
+    t->pass("encodes numbers correctly");
+  });
 
   t.test("basic structure", [](Tap* t) {
     t->plan(2);
@@ -770,12 +874,15 @@ int main() {
     pprof::Sample sample({location}, {1234, 5678}, {label});
     profile.add_sample(sample);
 
-    pprof::Encoder encoder;
-    std::string encoded = encoder.encode(profile);
+    std::string encoded = pprof::Encoder().encode(profile);
 
-    Result<Profile, Error> result_profile = Profile::decode(slice(encoded));
-    t->ok(result_profile.is_ok, "parsed");
-    if (!result_profile.is_ok) return;
+    Result<Profile, std::string> result_profile = Profile::decode(slice(encoded));
+    if (!result_profile.is_ok) {
+      t->fail("parse error: " + result_profile.error);
+      return;
+    } else {
+      t->pass("parsed");
+    }
 
     auto parsed = result_profile.value;
     t->test("profile", [=](Tap* t) {
@@ -799,18 +906,21 @@ int main() {
       profile.add_sample(sample);
     }
 
-    pprof::Encoder encoder;
-    std::string encoded = encoder.encode(profile);
+    std::string encoded = pprof::Encoder().encode(profile);
 
-    Result<Profile, Error> result_profile = Profile::decode(slice(encoded));
-    t->ok(result_profile.is_ok, "parsed");
-    if (!result_profile.is_ok) return;
+    Result<Profile, std::string> result_profile = Profile::decode(slice(encoded));
+    if (!result_profile.is_ok) {
+      t->fail("parse error: " + result_profile.error);
+      return;
+    } else {
+      t->pass("parsed");
+    }
 
     auto parsed = result_profile.value;
     t->equal(static_cast<int>(parsed.samples.size()), 2, "has two samples");
     t->equal(static_cast<int>(parsed.locations.size()), 1, "has one location");
     t->equal(static_cast<int>(parsed.functions.size()), 1, "has one function");
-    t->equal(static_cast<int>(parsed.mappings.size()), 1, "has one mapping");
+    t->equal(static_cast<int>(parsed.mappings.size()), 0, "has no mapping");
   });
 
   return t.end();

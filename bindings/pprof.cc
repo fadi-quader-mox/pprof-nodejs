@@ -36,6 +36,7 @@ uint64_t Encoder::dedup(const std::string& str) {
   return string_table.size() - 1;
 }
 uint64_t Encoder::dedup(const Mapping& mapping) {
+  if (mapping == Mapping()) return 0;
   auto found = std::find(mappings.begin(), mappings.end(), mapping);
   if (found != mappings.end()) {
     return found - mappings.begin() + 1;
@@ -44,6 +45,7 @@ uint64_t Encoder::dedup(const Mapping& mapping) {
   return mappings.size();
 }
 uint64_t Encoder::dedup(const Location& location) {
+  if (location == Location()) return 0;
   auto found = std::find(locations.begin(), locations.end(), location);
   if (found != locations.end()) {
     return found - locations.begin() + 1;
@@ -52,6 +54,7 @@ uint64_t Encoder::dedup(const Location& location) {
   return locations.size();
 }
 uint64_t Encoder::dedup(const Function& function) {
+  if (function == Function()) return 0;
   auto found = std::find(functions.begin(), functions.end(), function);
   if (found != functions.end()) {
     return found - functions.begin() + 1;
@@ -62,24 +65,25 @@ uint64_t Encoder::dedup(const Function& function) {
 
 template <typename T, typename>
 std::string Encoder::encode(T number) {
-  std::ostringstream bytes;
+  std::vector<uint8_t> bytes;
   while (number >= 0b10000000) {
-    bytes << static_cast<char>((number & 0b01111111) | 0b10000000);
+    bytes.push_back((static_cast<unsigned char>(number) & 0b01111111) | 0b10000000);
     number >>= 7;
   }
-  bytes << static_cast<char>(number);
-  return bytes.str();
+  bytes.push_back(static_cast<unsigned char>(number));
+  std::string str(bytes.begin(), bytes.end());
+  return str;
 }
 std::string Encoder::encode(bool v) {
   std::ostringstream bytes;
-  bytes << static_cast<char>(v ? 1 : 0);
+  bytes << static_cast<unsigned char>(v ? 1 : 0);
   return bytes.str();
 }
 template <typename T>
 std::string Encoder::encode_varint(uint8_t index, T number) {
   std::ostringstream bytes;
   if (number != 0) {
-    bytes << static_cast<char>((index << 3) | WireTypeVarInt);
+    bytes << static_cast<unsigned char>((index << 3) | WireTypeVarInt);
     bytes << encode(number);
   }
   return bytes.str();
@@ -87,26 +91,30 @@ std::string Encoder::encode_varint(uint8_t index, T number) {
 template <typename T>
 std::string Encoder::encode_length_delimited(uint8_t index, const T& value) {
   std::ostringstream bytes;
-  bytes << static_cast<char>((index << 3) | WireTypeLengthDelimited);
   std::string encoded_value = encode(value);
-  bytes << static_cast<char>(encoded_value.size());
-  bytes << encoded_value;
+  if (encoded_value.size()) {
+    bytes << static_cast<unsigned char>((index << 3) | WireTypeLengthDelimited);
+    bytes << encode(encoded_value.size());
+    bytes << encoded_value;
+  }
   return bytes.str();
 }
 template <typename T>
 std::string Encoder::encode_length_delimited_with_id(
-  uint8_t id, uint8_t index, const T& value) {
+  uint64_t id, uint8_t index, const T& value) {
   std::ostringstream bytes;
-  bytes << static_cast<char>((index << 3) | WireTypeLengthDelimited);
   std::string encoded_value = encode(id, value);
-  bytes << static_cast<char>(encoded_value.size());
-  bytes << encoded_value;
+  if (encoded_value.size()) {
+    bytes << static_cast<unsigned char>((index << 3) | WireTypeLengthDelimited);
+    bytes << encode(encoded_value.size());
+    bytes << encoded_value;
+  }
   return bytes.str();
 }
 std::string Encoder::encode_string(uint8_t index, const std::string& str) {
   std::ostringstream bytes;
-  bytes << static_cast<char>((index << 3) | WireTypeLengthDelimited);
-  bytes << static_cast<char>(str.size());
+  bytes << static_cast<unsigned char>((index << 3) | WireTypeLengthDelimited);
+  bytes << encode(str.size());
   bytes << str;
   return bytes.str();
 }
@@ -136,30 +144,37 @@ std::string Encoder::encode(const Sample& sample) {
         return this->dedup(location);
       });
 
-    bytes << static_cast<char>((1 << 3) | WireTypeLengthDelimited);
     std::ostringstream locationBytes;
     for (auto locationId : ids) {
       locationBytes << encode(locationId);
     }
+
     std::string location_ids = locationBytes.str();
-    bytes << static_cast<char>(location_ids.size());
-    bytes << location_ids;
+    if (location_ids.size()) {
+      bytes << static_cast<unsigned char>((1 << 3) | WireTypeLengthDelimited);
+      bytes << encode(location_ids.size());
+      bytes << location_ids;
+    }
   }
   if (sample.values.size()) {
-    bytes << static_cast<char>((2 << 3) | WireTypeLengthDelimited);
     std::ostringstream valuesBytes;
     for (auto value : sample.values) {
       valuesBytes << encode(value);
     }
-    bytes << static_cast<char>(valuesBytes.str().size());
-    bytes << valuesBytes.str();
+
+    std::string values = valuesBytes.str();
+    if (values.size()) {
+      bytes << static_cast<unsigned char>((2 << 3) | WireTypeLengthDelimited);
+      bytes << encode(values.size());
+      bytes << values;
+    }
   }
   for (auto label : sample.labels) {
     bytes << encode_length_delimited(3, label);
   }
   return bytes.str();
 }
-std::string Encoder::encode(uint8_t id, const Mapping& mapping) {
+std::string Encoder::encode(uint64_t id, const Mapping& mapping) {
   std::ostringstream bytes;
   bytes << encode_varint(1, id);
   bytes << encode_varint(2, mapping.memory_start);
@@ -179,7 +194,7 @@ std::string Encoder::encode(const Line& line) {
   bytes << encode_varint(2, line.line);
   return bytes.str();
 }
-std::string Encoder::encode(uint8_t id, const Location& location) {
+std::string Encoder::encode(uint64_t id, const Location& location) {
   std::ostringstream bytes;
   bytes << encode_varint(1, id);
   bytes << encode_varint(2, dedup(location.mapping));
@@ -190,7 +205,7 @@ std::string Encoder::encode(uint8_t id, const Location& location) {
   bytes << encode_varint(5, location.is_folded);
   return bytes.str();
 }
-std::string Encoder::encode(uint8_t id, const Function& function) {
+std::string Encoder::encode(uint64_t id, const Function& function) {
   std::ostringstream bytes;
   bytes << encode_varint(1, id);
   bytes << encode_varint(2, dedup(function.name));
@@ -208,29 +223,34 @@ std::string Encoder::encode(const Profile& profile) {
     bytes << encode_length_delimited(2, sample);
   }
   // Add locations before mappings as mappings are extracted from them
+  std::ostringstream locationBytes;
   for (size_t i = 0; i < locations.size(); i++) {
-    bytes << encode_length_delimited_with_id(i + 1, 4, locations[i]);
+    locationBytes << encode_length_delimited_with_id(i + 1, 4, locations.at(i));
   }
   for (size_t i = 0; i < mappings.size(); i++) {
-    bytes << encode_length_delimited_with_id(i + 1, 3, mappings[i]);
+    bytes << encode_length_delimited_with_id(i + 1, 3, mappings.at(i));
   }
+  bytes << locationBytes.str();
   for (size_t i = 0; i < functions.size(); i++) {
-    bytes << encode_length_delimited_with_id(i + 1, 5, functions[i]);
+    bytes << encode_length_delimited_with_id(i + 1, 5, functions.at(i));
+  }
+  auto period_type = encode_length_delimited(11, profile.period_type);
+  std::ostringstream commentBytes;
+  for (auto comment : profile.comment) {
+    commentBytes << encode_varint(13, dedup(comment));
+  }
+  // Add string table last as other field encodings may add to it
+  for (auto str : string_table) {
+    bytes << encode_string(6, str);
   }
   bytes << encode_varint(7, profile.drop_frames);
   bytes << encode_varint(8, profile.keep_frames);
   bytes << encode_varint(9, profile.time_nanos);
   bytes << encode_varint(10, profile.duration_nanos);
-  bytes << encode_length_delimited(11, profile.period_type);
+  bytes << period_type;
   bytes << encode_varint(12, profile.period);
-  for (auto comment : profile.comment) {
-    bytes << encode_varint(13, dedup(comment));
-  }
+  bytes << commentBytes.str();
   bytes << encode_varint(14, profile.default_sample_type);
-  // Add string table last as other field encodings may add to it
-  for (auto str : string_table) {
-    bytes << encode_string(6, str);
-  }
   return bytes.str();
 }
 

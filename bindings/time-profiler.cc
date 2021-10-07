@@ -14,11 +14,22 @@
  * limitations under the License.
  */
 
+#include <iostream>
+
 #include <sstream>
 #include <vector>
 #include <map>
 
 #include "time-profiler.h"
+
+// Statically allocate some things that will never change
+static const std::string native_string = "<native>";
+static const std::string anonymous_string = "(anonymous)";
+static const std::string program_string = "(program)";
+static const std::string idle_string = "(idle)";
+
+static const pprof::ValueType sample_count("sample", "count");
+static const pprof::ValueType wall_nanoseconds("wall", "nanoseconds");
 
 // TODO(qard): Add source map support
 TimeProfileEncoder::TimeProfileEncoder(const Napi::Env& env,
@@ -40,8 +51,6 @@ TimeProfileEncoder::~TimeProfileEncoder() {
 }
 
 void TimeProfileEncoder::Execute() {
-  pprof::ValueType sample_count("sample", "count");
-  pprof::ValueType wall_nanoseconds("wall", "nanoseconds");
   pprof::Profile profile(sample_count, wall_nanoseconds);
   profile.time_nanos = startTime;
   profile.period = intervalNanos;
@@ -69,11 +78,12 @@ void TimeProfileEncoder::Execute() {
     children.pop_back();
 
     // Find function and script names
-    auto scriptName = fallback(node->GetScriptResourceNameStr(), "<native>");
-    auto name = fallback(node->GetFunctionNameStr(), "(anonymous)");
+    auto scriptName = fallback(node->GetScriptResourceNameStr(),
+                               native_string);
+    auto name = fallback(node->GetFunctionNameStr(), anonymous_string);
 
     // Filter out some nodes we're not interested in
-    if (name == "(idle)" || name == "(program)") continue;
+    if (name == idle_string || name == program_string) continue;
 
     // Create call location for this sample
     auto location =
