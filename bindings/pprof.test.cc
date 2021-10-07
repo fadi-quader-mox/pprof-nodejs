@@ -28,9 +28,9 @@
 //
 std::string hex(const std::vector<char>& data) {
   std::stringstream ss;
-  ss << std::hex;
+  ss << std::hex << std::setw(2) << std::setfill('0');
   for (size_t i = 0; i < data.size(); i++) {
-    ss << std::setw(2) << std::setfill('0') << (0xff & static_cast<int>(data[i]));
+    ss << (0xff & static_cast<int>(data[i]));
   }
   return ss.str();
 }
@@ -65,17 +65,17 @@ struct FieldFlag {
     : flag(flag),
       field(flag >> 3),
       mode(flag & 0b111) {}
-  
-  static Result<FieldFlag, std::string> New(int byte) {
+
+  static Result<FieldFlag> New(int byte) {
     FieldFlag flag(byte);
     if (flag.mode != 0 && flag.mode != 2) {
       std::string message = "Invalid flag field: ";
       message += std::to_string(flag.field);
       message += ", mode: ";
       message += std::to_string(flag.mode);
-      return Err<FieldFlag, std::string>(message);
+      return Err<FieldFlag>(message);
     }
-    return Ok<FieldFlag, std::string>(flag);
+    return Ok<FieldFlag>(flag);
   }
 };
 
@@ -100,7 +100,9 @@ struct Value {
   std::vector<char> value;
   size_t offset = 0;
 
-  Value(const std::vector<char>& value) : value(value) {}
+  explicit Value(const std::vector<char>& value)
+    : value(value) {}
+
   Value(const std::vector<char>& value, size_t offset)
     : value(value), offset(offset) {}
 };
@@ -161,13 +163,13 @@ struct ValueType {
     return type == rhs.type && unit == rhs.unit;
   }
 
-  static Result<ValueType, std::string> decode(const std::vector<char>& bytes) {
+  static Result<ValueType> decode(const std::vector<char>& bytes) {
     ValueType value_type;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<ValueType, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<ValueType>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -186,7 +188,7 @@ struct ValueType {
       }
     }
 
-    return Ok<ValueType, std::string>(value_type);
+    return Ok<ValueType>(value_type);
   }
 };
 
@@ -205,13 +207,13 @@ struct Label {
       num_unit == rhs.num_unit;
   }
 
-  static Result<Label, std::string> decode(const std::vector<char>& bytes) {
+  static Result<Label> decode(const std::vector<char>& bytes) {
     Label label;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<Label, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Label>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -238,7 +240,7 @@ struct Label {
       }
     }
 
-    return Ok<Label, std::string>(label);
+    return Ok<Label>(label);
   }
 };
 
@@ -255,13 +257,13 @@ struct Sample {
       labels == rhs.labels;
   }
 
-  static Result<Sample, std::string> decode(const std::vector<char>& bytes) {
+  static Result<Sample> decode(const std::vector<char>& bytes) {
     Sample sample;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<Sample, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Sample>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -279,14 +281,14 @@ struct Sample {
         }
         case 3: {  // labels
           auto result = Label::decode(value.value);
-          if (!result.is_ok) return Err<Sample, std::string>(result.error);
+          if (!result.is_ok) return Err<Sample>(result.error);
           sample.labels.push_back(result.value);
           break;
         }
       }
     }
 
-    return Ok<Sample, std::string>(sample);
+    return Ok<Sample>(sample);
   }
 };
 
@@ -317,13 +319,13 @@ struct Mapping {
       has_inline_frames == rhs.has_inline_frames;
   }
 
-  static Result<Mapping, std::string> decode(const std::vector<char>& bytes) {
+  static Result<Mapping> decode(const std::vector<char>& bytes) {
     Mapping mapping;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<Mapping, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Mapping>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -374,7 +376,7 @@ struct Mapping {
       }
     }
 
-    return Ok<Mapping, std::string>(mapping);
+    return Ok<Mapping>(mapping);
   }
 };
 
@@ -395,13 +397,13 @@ struct Function {
       start_line == rhs.start_line;
   }
 
-  static Result<Function, std::string> decode(const std::vector<char>& bytes) {
+  static Result<Function> decode(const std::vector<char>& bytes) {
     Function function;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<Function, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Function>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -432,7 +434,7 @@ struct Function {
       }
     }
 
-    return Ok<Function, std::string>(function);
+    return Ok<Function>(function);
   }
 };
 
@@ -447,13 +449,13 @@ struct Line {
       line_number == rhs.line_number;
   }
 
-  static Result<Line, std::string> decode(const std::vector<char>& bytes) {
+  static Result<Line> decode(const std::vector<char>& bytes) {
     Line line;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<Line, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Line>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -472,7 +474,7 @@ struct Line {
       }
     }
 
-    return Ok<Line, std::string>(line);
+    return Ok<Line>(line);
   }
 };
 
@@ -493,13 +495,13 @@ struct Location {
       is_folded != rhs.is_folded;
   }
 
-  static Result<Location, std::string> decode(const std::vector<char>& bytes) {
+  static Result<Location> decode(const std::vector<char>& bytes) {
     Location location;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<Location, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Location>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -521,7 +523,7 @@ struct Location {
         }
         case 4: {  // lines
           auto result = Line::decode(value.value);
-          if (!result.is_ok) return Err<Location, std::string>(result.error);
+          if (!result.is_ok) return Err<Location>(result.error);
           location.lines.push_back(result.value);
           break;
         }
@@ -532,7 +534,7 @@ struct Location {
       }
     }
 
-    return Ok<Location, std::string>(location);
+    return Ok<Location>(location);
   }
 };
 
@@ -571,13 +573,13 @@ struct Profile {
       default_sample_type == rhs.default_sample_type;
   }
 
-  static Result<Profile, std::string> decode(const std::vector<char>& bytes) {
+  static Result<Profile> decode(const std::vector<char>& bytes) {
     Profile profile;
 
     size_t index = 0;
     while (index < bytes.size()) {
-      Result<FieldFlag, std::string> flag_result = FieldFlag::New(bytes[index]);
-      if (!flag_result.is_ok) return Err<Profile, std::string>(flag_result.error);
+      Result<FieldFlag> flag_result = FieldFlag::New(bytes[index]);
+      if (!flag_result.is_ok) return Err<Profile>(flag_result.error);
       FieldFlag flag = flag_result.value;
       index++;
 
@@ -587,31 +589,31 @@ struct Profile {
       switch (flag.field) {
         case 1: {  // sample_types
           auto result = ValueType::decode(value.value);
-          if (!result.is_ok) return Err<Profile, std::string>(result.error);
+          if (!result.is_ok) return Err<Profile>(result.error);
           profile.sample_types.push_back(result.value);
           break;
         }
         case 2: {  // samples
           auto result = Sample::decode(value.value);
-          if (!result.is_ok) return Err<Profile, std::string>(result.error);
+          if (!result.is_ok) return Err<Profile>(result.error);
           profile.samples.push_back(result.value);
           break;
         }
         case 3: {  // mappings
           auto result = Mapping::decode(value.value);
-          if (!result.is_ok) return Err<Profile, std::string>(result.error);
+          if (!result.is_ok) return Err<Profile>(result.error);
           profile.mappings.push_back(result.value);
           break;
         }
         case 4: {  // locations
           auto result = Location::decode(value.value);
-          if (!result.is_ok) return Err<Profile, std::string>(result.error);
+          if (!result.is_ok) return Err<Profile>(result.error);
           profile.locations.push_back(result.value);
           break;
         }
         case 5: {  // functions
           auto result = Function::decode(value.value);
-          if (!result.is_ok) return Err<Profile, std::string>(result.error);
+          if (!result.is_ok) return Err<Profile>(result.error);
           profile.functions.push_back(result.value);
           break;
         }
@@ -637,7 +639,7 @@ struct Profile {
         }
         case 11: {  // period_type
           auto result = ValueType::decode(value.value);
-          if (!result.is_ok) return Err<Profile, std::string>(result.error);
+          if (!result.is_ok) return Err<Profile>(result.error);
           profile.period_type = result.value;
           break;
         }
@@ -656,7 +658,7 @@ struct Profile {
       }
     }
 
-    return Ok<Profile, std::string>(profile);
+    return Ok<Profile>(profile);
   }
 };
 
@@ -813,7 +815,7 @@ int main() {
 
     // Up to 127 fits in one byte
     for (uint64_t i = 0; i < 128; i++) {
-      std::vector<char> bytes;
+      std::vector<uint8_t> bytes;
       bytes.push_back(i);
       std::string expected(bytes.begin(), bytes.end());
 
@@ -826,9 +828,9 @@ int main() {
 
     // 128-255 fits in two bytes
     for (uint64_t i = 128; i < 256; i++) {
-      std::vector<char> bytes;
+      std::vector<uint8_t> bytes;
       bytes.push_back(i);
-      bytes.push_back((unsigned char)1);
+      bytes.push_back(1);
       std::string expected(bytes.begin(), bytes.end());
 
       std::string encoded = pprof::Encoder().encode(i);
@@ -840,16 +842,16 @@ int main() {
 
     // 256 fits in two bytes with 2 in the second byte
     uint64_t i = 256;
-    std::vector<char> bytes;
-    bytes.push_back(-128);
-    bytes.push_back((unsigned char)2);
+    std::vector<uint8_t> bytes;
+    bytes.push_back(128);
+    bytes.push_back(2);
     std::string expected(bytes.begin(), bytes.end());
 
     std::string encoded = pprof::Encoder().encode(i);
     for (auto byte : slice(encoded)) {
-      std::cout << std::to_string(byte) << std::endl;
+      std::cout << std::to_string((uint8_t)byte) << std::endl;
     }
-if (encoded != expected) {
+    if (encoded != expected) {
       t->fail("256 should have two bytes");
       return;
     }
@@ -876,7 +878,7 @@ if (encoded != expected) {
 
     std::string encoded = pprof::Encoder().encode(profile);
 
-    Result<Profile, std::string> result_profile = Profile::decode(slice(encoded));
+    Result<Profile> result_profile = Profile::decode(slice(encoded));
     if (!result_profile.is_ok) {
       t->fail("parse error: " + result_profile.error);
       return;
@@ -908,7 +910,7 @@ if (encoded != expected) {
 
     std::string encoded = pprof::Encoder().encode(profile);
 
-    Result<Profile, std::string> result_profile = Profile::decode(slice(encoded));
+    Result<Profile> result_profile = Profile::decode(slice(encoded));
     if (!result_profile.is_ok) {
       t->fail("parse error: " + result_profile.error);
       return;

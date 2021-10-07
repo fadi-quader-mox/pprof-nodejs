@@ -67,7 +67,8 @@ template <typename T, typename>
 std::string Encoder::encode(T number) {
   std::vector<uint8_t> bytes;
   while (number >= 0b10000000) {
-    bytes.push_back((static_cast<unsigned char>(number) & 0b01111111) | 0b10000000);
+    unsigned char byte = number;
+    bytes.push_back((byte & 0b01111111) | 0b10000000);
     number >>= 7;
   }
   bytes.push_back(static_cast<unsigned char>(number));

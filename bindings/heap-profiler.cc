@@ -22,9 +22,9 @@
 #include "heap-profiler.h"
 
 // Statically allocate some things that will never change
-static const std::string native_string = "<native>";
-static const std::string anonymous_string = "(anonymous)";
-static const std::string external_string = "(external)";
+static const char native_string[] = "<native>";
+static const char anonymous_string[] = "(anonymous)";
+static const char external_string[] = "(external)";
 
 static const pprof::ValueType objects_count("objects", "count");
 static const pprof::ValueType space_bytes("space", "bytes");

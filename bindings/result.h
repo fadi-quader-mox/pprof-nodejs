@@ -16,7 +16,9 @@
 
 #pragma once
 
-template<typename V, typename E>
+#include <string>
+
+template<typename V, typename E = std::string>
 struct Result {
   bool is_ok = false;
   union {
@@ -44,19 +46,12 @@ struct Result {
   }
 };
 
-template<typename V, typename E>
+template<typename V, typename E = std::string>
 const Result<V, E> Ok(const V& value) {
   return Result<V, E>(value);
 }
 
-template <typename V, typename E>
+template <typename V, typename E = std::string>
 const Result<V, E> Err(const E& error) {
   return Result<V, E>(error);
 }
-
-struct Error {
-  const char* message;
-
-  explicit Error(const char* message)
-    : message(message) {}
-};

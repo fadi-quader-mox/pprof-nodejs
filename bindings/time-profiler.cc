@@ -23,10 +23,10 @@
 #include "time-profiler.h"
 
 // Statically allocate some things that will never change
-static const std::string native_string = "<native>";
-static const std::string anonymous_string = "(anonymous)";
-static const std::string program_string = "(program)";
-static const std::string idle_string = "(idle)";
+static const char native_string[] = "<native>";
+static const char anonymous_string[] = "(anonymous)";
+static const char program_string[] = "(program)";
+static const char idle_string[] = "(idle)";
 
 static const pprof::ValueType sample_count("sample", "count");
 static const pprof::ValueType wall_nanoseconds("wall", "nanoseconds");
