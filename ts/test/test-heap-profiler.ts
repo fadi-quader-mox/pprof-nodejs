@@ -56,11 +56,11 @@ describe('HeapProfiler', () => {
     // capture point anyway, so it should be fine to verify this way.
     assert.ok(Date.now() - Number(profile.timeNanos! / BigInt(1000000)) < 100);
 
-    verifyValueType(profile, profile.periodType!, 'heap', 'bytes');
+    verifyValueType(profile, profile.periodType!, 'space', 'bytes');
 
     assert.strictEqual(profile.sampleType!.length, 2);
-    verifyValueType(profile, profile.sampleType![0], 'object', 'count');
-    verifyValueType(profile, profile.sampleType![1], 'heap', 'bytes');
+    verifyValueType(profile, profile.sampleType![0], 'objects', 'count');
+    verifyValueType(profile, profile.sampleType![1], 'space', 'bytes');
 
     assert.ok(profile.sample!.length > 0);
     verifySample(profile, '(external)');
