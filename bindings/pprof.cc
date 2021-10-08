@@ -63,8 +63,7 @@ uint64_t Encoder::dedup(const Function& function) {
   return functions.size();
 }
 
-template <typename T, typename>
-std::string Encoder::encode(T number) {
+std::string Encoder::encode(uint64_t number) {
   std::vector<uint8_t> bytes;
   while (number >= 0b10000000) {
     unsigned char byte = number;
@@ -74,6 +73,12 @@ std::string Encoder::encode(T number) {
   bytes.push_back(static_cast<unsigned char>(number));
   std::string str(bytes.begin(), bytes.end());
   return str;
+}
+std::string Encoder::encode(int64_t number) {
+  return encode((uint64_t)number);
+}
+std::string Encoder::encode(size_t number) {
+  return encode((uint64_t)number);
 }
 std::string Encoder::encode(bool v) {
   std::ostringstream bytes;

@@ -234,11 +234,9 @@ class Encoder {
  public:
   Encoder();
 
-  template <
-    typename T = uint64_t,
-    typename = typename std::enable_if_t<std::is_integral<T>::value, T>
-  >
-  std::string encode(T number);
+  std::string encode(uint64_t number);
+  std::string encode(int64_t number);
+  std::string encode(size_t number);
   std::string encode(bool v);
   template <typename T>
   std::string encode_varint(uint8_t index, T number);
