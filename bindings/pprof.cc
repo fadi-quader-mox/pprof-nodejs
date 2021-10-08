@@ -74,17 +74,6 @@ std::string Encoder::encode(uint64_t number) {
   std::string str(bytes.begin(), bytes.end());
   return str;
 }
-std::string Encoder::encode(int64_t number) {
-  return encode((uint64_t)number);
-}
-std::string Encoder::encode(size_t number) {
-  return encode((uint64_t)number);
-}
-std::string Encoder::encode(bool v) {
-  std::ostringstream bytes;
-  bytes << static_cast<unsigned char>(v ? 1 : 0);
-  return bytes.str();
-}
 template <typename T>
 std::string Encoder::encode_varint(uint8_t index, T number) {
   std::ostringstream bytes;

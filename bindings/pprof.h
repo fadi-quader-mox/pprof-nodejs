@@ -235,9 +235,6 @@ class Encoder {
   Encoder();
 
   std::string encode(uint64_t number);
-  std::string encode(int64_t number);
-  std::string encode(size_t number);
-  std::string encode(bool v);
   template <typename T>
   std::string encode_varint(uint8_t index, T number);
   template <typename T>
