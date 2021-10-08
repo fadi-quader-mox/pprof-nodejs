@@ -53,8 +53,8 @@ load();
 
 time
   .profile({
-    durationMillis: 2000,
-    intervalMicros: 100
+    durationMillis: 1500,
+    intervalMicros: 10
   })
   .finally(() => {
     stopped = true;
