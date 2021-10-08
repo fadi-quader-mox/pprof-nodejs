@@ -10,6 +10,11 @@ if (!existsSync(path)) {
   path = join(__dirname, '../build/Debug/pprof-test')
 }
 
+if (!existsSync(path)) {
+  console.error('No pprof-test build found')
+  process.exit(1)
+}
+
 execSync(path, {
   stdio: 'inherit'
 })
