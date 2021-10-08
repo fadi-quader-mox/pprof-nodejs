@@ -11,6 +11,7 @@ if (!existsSync(path)) {
 }
 
 if (!existsSync(path)) {
+  // eslint-disable-next-line no-console
   console.error('No pprof-test build found')
   process.exit(1)
 }
