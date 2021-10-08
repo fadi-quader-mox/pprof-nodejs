@@ -848,9 +848,6 @@ int main() {
     std::string expected(bytes.begin(), bytes.end());
 
     std::string encoded = pprof::Encoder().encode(i);
-    for (auto byte : slice(encoded)) {
-      std::cout << std::to_string((uint8_t)byte) << std::endl;
-    }
     if (encoded != expected) {
       t->fail("256 should have two bytes");
       return;

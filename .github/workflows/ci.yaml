@@ -45,6 +45,17 @@ jobs:
       - run: npm run rebuild
       - run: npm run test:cpp
 
+  sanitize-cpp:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-2016 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+      - run: npm ci --ignore-scripts
+      - run: npm run sanitizers
+
   check-licenses:
     runs-on: ubuntu-latest
     steps:

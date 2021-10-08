@@ -236,7 +236,7 @@ class Encoder {
 
   template <
     typename T = uint64_t,
-    typename = typename std::enable_if_t<std::is_arithmetic<T>::value, T>
+    typename = typename std::enable_if_t<std::is_integral<T>::value, T>
   >
   std::string encode(T number);
   std::string encode(bool v);
