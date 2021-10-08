@@ -4,13 +4,13 @@ const { execSync } = require('child_process')
 const { existsSync } = require('fs')
 const { join } = require('path')
 
-let path = join(__dirname, '../build/Release/pprof-test')
-
-if (!existsSync(path)) {
-  path = join(__dirname, '../build/Debug/pprof-test')
+function findBuild (mode) {
+  const path = join(__dirname, '..', 'build', mode, 'pprof-test')
+  return existsSync(path) && path
 }
 
-if (!existsSync(path)) {
+const path = findBuild('Release') || findBuild('Debug')
+if (!path) {
   // eslint-disable-next-line no-console
   console.error('No pprof-test build found')
   process.exit(1)
